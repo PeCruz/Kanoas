@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.Kanoas" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/kanoas_background</item>
+        <item name="android:statusBarColor">@color/kanoas_primary</item>
+    </style>
+</resources>

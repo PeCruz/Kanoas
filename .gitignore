@@ -1,0 +1,37 @@
+# =============================================================================
+# Kanoas — .gitignore
+# =============================================================================
+
+# --- Gradle ---
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# --- IDE ---
+.idea/
+*.iml
+*.iws
+*.ipr
+.fleet/
+.vscode/
+
+# --- Android ---
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+
+# --- Kotlin ---
+*.class
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- Docker ---
+# Keep Dockerfile and docker-compose.yml tracked
+# Ignore any local override files
+docker-compose.override.yml

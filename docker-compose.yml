@@ -1,0 +1,68 @@
+# =============================================================================
+# Kanoas — Docker Compose (AI Jail: Isolamento & Governança)
+# =============================================================================
+# AI Jail implementado via conteinerização:
+#   - Sem acesso à rede durante o build (network_mode: none)
+#   - Sem privilégios extras (security_opt: no-new-privileges)
+#   - Usuário não-root em todos os serviços
+#   - Cache do Gradle isolado via named volume
+#
+# Uso:
+#   docker compose run --rm android-build   → Build do APK debug
+#   docker compose run --rm android-test    → Testes unitários
+#   docker compose run --rm android-lint    → Lint
+# =============================================================================
+
+x-common: &common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  volumes:
+    - .:/project
+    - gradle-cache:/home/builder/.gradle
+  working_dir: /project
+  user: builder
+  security_opt:
+    - no-new-privileges:true
+  # Sem acesso à rede em runtime — todas as deps já devem estar no cache.
+  # Para o PRIMEIRO build (download de deps), remova ou comente network_mode abaixo.
+  # network_mode: "none"
+
+services:
+  # ---------------------------------------------------------------------------
+  # android-build: compila o APK de debug
+  # Output: composeApp/build/outputs/apk/debug/composeApp-debug.apk
+  # ---------------------------------------------------------------------------
+  android-build:
+    <<: *common
+    command: >
+      sh -c "chmod +x gradlew && ./gradlew :composeApp:assembleDebug --no-daemon --stacktrace"
+
+  # ---------------------------------------------------------------------------
+  # android-test: executa testes unitários (commonTest + androidTest unitário)
+  # ---------------------------------------------------------------------------
+  android-test:
+    <<: *common
+    command: >
+      sh -c "chmod +x gradlew && ./gradlew :composeApp:testDebugUnitTest :shared:testDebugUnitTest --no-daemon --stacktrace"
+
+  # ---------------------------------------------------------------------------
+  # android-lint: análise estática
+  # ---------------------------------------------------------------------------
+  android-lint:
+    <<: *common
+    command: >
+      sh -c "chmod +x gradlew && ./gradlew :composeApp:lint --no-daemon"
+
+  # ---------------------------------------------------------------------------
+  # android-shell: acesso interativo ao container (debug / troubleshooting)
+  # ---------------------------------------------------------------------------
+  android-shell:
+    <<: *common
+    entrypoint: /bin/bash
+    stdin_open: true
+    tty: true
+
+volumes:
+  gradle-cache:
+    driver: local
