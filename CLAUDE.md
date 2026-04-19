@@ -22,34 +22,65 @@ O projeto segue a filosofia do **Desafio de 7 Dias do Akita Dev**:
 
 ## 🏗️ Arquitetura
 
-### Clean Architecture + MVVM
+### Clean Architecture + MVI (Model-View-Intent)
 
 ```
-┌─────────────────────────────────────────────┐
-│              composeApp/                     │
-│  ┌────────────────────────────────────────┐  │
-│  │  Presentation (UI + ViewModel)         │  │
-│  │  commonMain/ → Compose Multiplatform   │  │
-│  │  androidMain/ → Activity, Application  │  │
-│  └──────────────┬─────────────────────────┘  │
-│                 │ depends on                  │
-├─────────────────┼─────────────────────────────┤
-│              shared/                          │
-│  ┌──────────────┼─────────────────────────┐  │
-│  │  Domain (Use Cases, Models, Repos IF)  │  │
-│  │  Data (Repos Impl, DataSources)        │  │
-│  │  commonMain/ → Pure Kotlin             │  │
-│  └────────────────────────────────────────┘  │
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│                  composeApp/                      │
+│  ┌─────────────────────────────────────────────┐  │
+│  │  Presentation (UI + ViewModel)              │  │
+│  │  commonMain/                                │  │
+│  │    ├── kanban/    → Kanban Screens + VMs    │  │
+│  │    ├── financial/ → Financial Screens + VMs │  │
+│  │    └── core/ui/   → Theme, Nav, Components  │  │
+│  │  androidMain/ → Activity, Application       │  │
+│  └──────────────────┬──────────────────────────┘  │
+│                     │ depends on                  │
+├─────────────────────┼────────────────────────────-┤
+│                  shared/                          │
+│  ┌──────────────────┼──────────────────────────┐  │
+│  │  kanban/                                    │  │
+│  │    ├── domain/ → Models, UseCases, Repo IF  │  │
+│  │    └── data/   → Repo Impl, DataSources     │  │
+│  │  financial/                                 │  │
+│  │    ├── domain/                              │  │
+│  │    └── data/                                │  │
+│  │  core/                                      │  │
+│  │    ├── network/  → Ktor + Supabase Client   │  │
+│  │    ├── database/ → SQLDelight               │  │
+│  │    └── di/       → Koin modules             │  │
+│  │  commonMain/ → Pure Kotlin (sem Android)    │  │
+│  └─────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────┘
+```
+
+### MVI — Contrato Base
+
+Cada ViewModel deve implementar este contrato:
+
+```kotlin
+// shared/core/mvi/MviViewModel.kt
+interface MviViewModel<STATE : UiState, INTENT : UiIntent, EFFECT : UiEffect> {
+    val state: StateFlow<STATE>
+    val effects: SharedFlow<EFFECT>
+    fun handleIntent(intent: INTENT)
+}
+```
+
+O fluxo é sempre unidirecional:
+```
+User Action → Intent → ViewModel → State (UI re-renders)
+                                 ↘ Effect (navigation, toast, etc.)
 ```
 
 ### Camadas e Responsabilidades
 
 | Camada | Módulo | Conteúdo |
 |--------|--------|----------|
-| **Presentation** | `composeApp/commonMain` | Screens, ViewModels, Navigation, Theme |
-| **Domain** | `shared/commonMain/domain` | Models, Use Cases, Repository interfaces |
-| **Data** | `shared/commonMain/data` | Repository implementations, Data Sources, DTOs |
+| **Presentation** | `composeApp/commonMain/{feature}` | Screens, ViewModels, State, Intent, Effect |
+| **Domain** | `shared/{feature}/domain` | Models, Use Cases, Repository interfaces |
+| **Data** | `shared/{feature}/data` | Repository implementations, Data Sources, DTOs |
+| **Core** | `shared/core` | Ktor, SQLDelight, Koin modules, MVI base contracts |
 | **Platform** | `composeApp/androidMain` | Activity, Application, platform DI |
 
 ---
@@ -59,32 +90,49 @@ O projeto segue a filosofia do **Desafio de 7 Dias do Akita Dev**:
 ### Linguagem e Frameworks
 - **Kotlin** — única linguagem permitida
 - **Coroutines + Flow** — para operações assíncronas
-- **StateFlow** — para estado reativo no ViewModel
+- **StateFlow** — para estado reativo (MVI State)
+- **SharedFlow** — para efeitos colaterais one-shot (navigation, toasts)
 - **Koin** — injeção de dependência (NÃO usar Hilt/Dagger)
 - **Material 3** — design system
+- **Ktor Client** — chamadas HTTP e WebSocket (KMP-native)
+- **Supabase Kotlin SDK** — backend (auth, database, real-time, storage)
+- **SQLDelight** — persistência local e cache offline
+- **Kotlinx.serialization** — serialização JSON
 
-### Convenções de Nomenclatura
+### Convenções de Nomenclatura (MVI)
 
 | Tipo | Padrão | Exemplo |
 |------|--------|---------|
-| Screen (Composable) | `{Feature}Screen` | `HomeScreen` |
-| ViewModel | `{Feature}ViewModel` | `HomeViewModel` |
-| UI State | `{Feature}UiState` | `HomeUiState` |
-| UI Event | `{Feature}UiEvent` | `HomeUiEvent` |
-| Use Case | `{Ação}{Entidade}UseCase` | `GetUserProfileUseCase` |
-| Repository Interface | `{Entidade}Repository` | `UserRepository` |
-| Repository Impl | `{Entidade}RepositoryImpl` | `UserRepositoryImpl` |
-| Koin Module | `{escopo}Module` | `appModule`, `dataModule` |
+| Screen (Composable) | `{Feature}Screen` | `KanbanScreen` |
+| ViewModel | `{Feature}ViewModel` | `KanbanViewModel` |
+| MVI State | `{Feature}State` | `KanbanState` |
+| MVI Intent | `{Feature}Intent` | `KanbanIntent` |
+| MVI Effect | `{Feature}Effect` | `KanbanEffect` |
+| Use Case | `{Ação}{Entidade}UseCase` | `GetBoardTasksUseCase` |
+| Repository Interface | `{Entidade}Repository` | `TaskRepository` |
+| Repository Impl | `{Entidade}RepositoryImpl` | `TaskRepositoryImpl` |
+| DTO (Data Transfer Object) | `{Entidade}Dto` | `TaskDto` |
+| Koin Module | `{escopo}Module` | `kanbanModule`, `networkModule` |
 
-### Estrutura de Feature
+### Estrutura de Feature (MVI)
 
 Cada feature deve seguir este padrão:
 ```
-presentation/{feature}/
-├── {Feature}Screen.kt        # @Composable function
-├── {Feature}ViewModel.kt     # ViewModel com StateFlow
-├── {Feature}UiState.kt       # data class imutável (se complexo)
-└── {Feature}UiEvent.kt       # sealed interface (se complexo)
+{feature}/
+├── presentation/
+│   ├── {Feature}Screen.kt        # @Composable — só renderiza state, dispara intents
+│   ├── {Feature}ViewModel.kt     # MviViewModel<State, Intent, Effect>
+│   ├── {Feature}State.kt         # data class imutável — snapshot completo da UI
+│   ├── {Feature}Intent.kt        # sealed interface — tudo que o usuário pode fazer
+│   └── {Feature}Effect.kt        # sealed interface — efeitos one-shot (nav, toast)
+├── domain/
+│   ├── model/                    # entidades puras do domínio
+│   ├── usecase/                  # um arquivo por use case
+│   └── repository/               # interfaces (contratos)
+└── data/
+    ├── repository/               # implementações dos contratos
+    ├── datasource/               # Supabase remote, SQLDelight local
+    └── dto/                      # mapeamento de/para API
 ```
 
 ---
@@ -92,13 +140,17 @@ presentation/{feature}/
 ## 🚫 Restrições
 
 1. **NUNCA** colocar lógica de negócio em Composables
-2. **NUNCA** usar `var` para estado — sempre `StateFlow` ou `MutableState`
+2. **NUNCA** usar `var` para estado — sempre `StateFlow` (state) ou `SharedFlow` (effects)
 3. **NUNCA** importar dependências Android no módulo `shared/`
 4. **NUNCA** criar dependências cíclicas entre módulos
 5. **NUNCA** fazer chamadas de rede diretamente no ViewModel — sempre via Use Case
 6. **NUNCA** usar `GlobalScope` — sempre `viewModelScope` ou scope injetado
 7. **NUNCA** hardcodar strings na UI — usar `stringResource()`
 8. **NUNCA** usar Hilt/Dagger — o projeto usa Koin
+9. **NUNCA** mutар o State diretamente — sempre emitir um novo estado via `copy()`
+10. **NUNCA** colocar múltiplos concerns no mesmo Use Case — um Use Case, uma responsabilidade
+11. **NUNCA** usar `UiEvent` ou `UiState` como nome — usar `Intent`, `State`, `Effect` (MVI)
+12. **NUNCA** usar Firebase — o projeto usa Supabase (PostgreSQL)
 
 ---
 
