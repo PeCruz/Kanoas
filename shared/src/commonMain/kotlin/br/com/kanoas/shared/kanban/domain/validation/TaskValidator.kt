@@ -5,55 +5,70 @@ import br.com.kanoas.shared.core.validation.ValidationResult
 /**
  * Regras de validação para criação/edição de Task.
  *
- * Espec (Day 3 TDD):
  *  - Name: obrigatório, máx. 50 chars
  *  - Priority: obrigatório, 1..5
  *  - Description: opcional, máx. 3000 chars
  *  - Comment: opcional, máx. 2000 chars
- *  - Attachment: máx. 100 MB (100 * 1024 * 1024 bytes)
+ *  - Attachment: máx. 100 MB
  *  - Start Date: dia atual
  *  - End Date: obrigatório, >= hoje
- *
- * Datas são representadas em *epoch days* (Long) — independe de plataforma.
  */
 object TaskValidator {
 
     const val NAME_MAX_LENGTH: Int = 50
     const val DESCRIPTION_MAX_LENGTH: Int = 3000
     const val COMMENT_MAX_LENGTH: Int = 2000
-    const val ATTACHMENT_MAX_BYTES: Long = 100L * 1024L * 1024L // 100 MB
+    const val ATTACHMENT_MAX_BYTES: Long = 100L * 1024L * 1024L
     const val PRIORITY_MIN: Int = 1
     const val PRIORITY_MAX: Int = 5
 
     fun validateName(name: String): ValidationResult {
-        TODO("Day 3 TDD — implementar após Red")
+        val trimmed = name.trim()
+        return when {
+            trimmed.isEmpty() -> ValidationResult.invalid("Nome é obrigatório")
+            name.length > NAME_MAX_LENGTH ->
+                ValidationResult.invalid("Máximo de $NAME_MAX_LENGTH caracteres")
+            else -> ValidationResult.Valid
+        }
     }
 
-    fun validatePriority(priority: Int?): ValidationResult {
-        TODO("Day 3 TDD — implementar após Red")
+    fun validatePriority(priority: Int?): ValidationResult = when {
+        priority == null -> ValidationResult.invalid("Prioridade é obrigatória")
+        priority < PRIORITY_MIN || priority > PRIORITY_MAX ->
+            ValidationResult.invalid("Prioridade deve ser entre $PRIORITY_MIN e $PRIORITY_MAX")
+        else -> ValidationResult.Valid
     }
 
-    fun validateDescription(description: String?): ValidationResult {
-        TODO("Day 3 TDD — implementar após Red")
+    fun validateDescription(description: String?): ValidationResult = when {
+        description == null || description.isEmpty() -> ValidationResult.Valid
+        description.length > DESCRIPTION_MAX_LENGTH ->
+            ValidationResult.invalid("Máximo de $DESCRIPTION_MAX_LENGTH caracteres")
+        else -> ValidationResult.Valid
     }
 
-    fun validateComment(comment: String?): ValidationResult {
-        TODO("Day 3 TDD — implementar após Red")
+    fun validateComment(comment: String?): ValidationResult = when {
+        comment == null || comment.isEmpty() -> ValidationResult.Valid
+        comment.length > COMMENT_MAX_LENGTH ->
+            ValidationResult.invalid("Máximo de $COMMENT_MAX_LENGTH caracteres")
+        else -> ValidationResult.Valid
     }
 
-    fun validateAttachmentSize(sizeBytes: Long): ValidationResult {
-        TODO("Day 3 TDD — implementar após Red")
+    fun validateAttachmentSize(sizeBytes: Long): ValidationResult = when {
+        sizeBytes > ATTACHMENT_MAX_BYTES ->
+            ValidationResult.invalid("Anexo excede 100 MB")
+        else -> ValidationResult.Valid
     }
 
-    /**
-     * @param endEpochDay data-fim em epoch days
-     * @param todayEpochDay dia atual em epoch days
-     */
-    fun validateEndDate(endEpochDay: Long?, todayEpochDay: Long): ValidationResult {
-        TODO("Day 3 TDD — implementar após Red")
+    fun validateEndDate(endEpochDay: Long?, todayEpochDay: Long): ValidationResult = when {
+        endEpochDay == null -> ValidationResult.invalid("Data de fim é obrigatória")
+        endEpochDay < todayEpochDay ->
+            ValidationResult.invalid("Data de fim deve ser hoje ou no futuro")
+        else -> ValidationResult.Valid
     }
 
-    fun validateStartDate(startEpochDay: Long, todayEpochDay: Long): ValidationResult {
-        TODO("Day 3 TDD — implementar após Red")
+    fun validateStartDate(startEpochDay: Long, todayEpochDay: Long): ValidationResult = when {
+        startEpochDay != todayEpochDay ->
+            ValidationResult.invalid("Data de início deve ser o dia atual")
+        else -> ValidationResult.Valid
     }
 }

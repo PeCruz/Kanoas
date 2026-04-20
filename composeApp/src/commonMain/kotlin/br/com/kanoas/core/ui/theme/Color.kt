@@ -3,71 +3,71 @@ package br.com.kanoas.core.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // =============================================================================
-// Kanoas Color Palette
+// Kanoas Color Palette — Blue + Orange (matching logo)
 // =============================================================================
 
-// --- Primary ---
-val KanoasPrimary = Color(0xFF6750A4)
+// --- Primary (Blue) ---
+val KanoasPrimary = Color(0xFF0077B6)
 val KanoasOnPrimary = Color(0xFFFFFFFF)
-val KanoasPrimaryContainer = Color(0xFFEADDFF)
-val KanoasOnPrimaryContainer = Color(0xFF21005D)
+val KanoasPrimaryContainer = Color(0xFFCAE6FF)
+val KanoasOnPrimaryContainer = Color(0xFF001E30)
 
-// --- Secondary ---
-val KanoasSecondary = Color(0xFF625B71)
+// --- Secondary (Deep Blue) ---
+val KanoasSecondary = Color(0xFF0353A4)
 val KanoasOnSecondary = Color(0xFFFFFFFF)
-val KanoasSecondaryContainer = Color(0xFFE8DEF8)
-val KanoasOnSecondaryContainer = Color(0xFF1D192B)
+val KanoasSecondaryContainer = Color(0xFFD6E3FF)
+val KanoasOnSecondaryContainer = Color(0xFF001B3D)
 
-// --- Tertiary ---
-val KanoasTertiary = Color(0xFF7D5260)
+// --- Tertiary (Orange) ---
+val KanoasTertiary = Color(0xFFE87B35)
 val KanoasOnTertiary = Color(0xFFFFFFFF)
-val KanoasTertiaryContainer = Color(0xFFFFD8E4)
-val KanoasOnTertiaryContainer = Color(0xFF31111D)
+val KanoasTertiaryContainer = Color(0xFFFFDBC8)
+val KanoasOnTertiaryContainer = Color(0xFF311300)
 
 // --- Error ---
-val KanoasError = Color(0xFFB3261E)
+val KanoasError = Color(0xFFBA1A1A)
 val KanoasOnError = Color(0xFFFFFFFF)
-val KanoasErrorContainer = Color(0xFFF9DEDC)
-val KanoasOnErrorContainer = Color(0xFF410E0B)
+val KanoasErrorContainer = Color(0xFFFFDAD6)
+val KanoasOnErrorContainer = Color(0xFF410002)
 
 // --- Background & Surface (Light) ---
-val KanoasBackground = Color(0xFFFFFBFE)
-val KanoasOnBackground = Color(0xFF1C1B1F)
-val KanoasSurface = Color(0xFFFFFBFE)
-val KanoasOnSurface = Color(0xFF1C1B1F)
-val KanoasSurfaceVariant = Color(0xFFE7E0EC)
-val KanoasOnSurfaceVariant = Color(0xFF49454F)
-val KanoasOutline = Color(0xFF79747E)
-
-// --- Background & Surface (Dark) ---
-val KanoasDarkBackground = Color(0xFF1C1B1F)
-val KanoasDarkOnBackground = Color(0xFFE6E1E5)
-val KanoasDarkSurface = Color(0xFF1C1B1F)
-val KanoasDarkOnSurface = Color(0xFFE6E1E5)
-val KanoasDarkSurfaceVariant = Color(0xFF49454F)
-val KanoasDarkOnSurfaceVariant = Color(0xFFCAC4D0)
-val KanoasDarkOutline = Color(0xFF938F99)
+val KanoasBackground = Color(0xFFF8FDFF)
+val KanoasOnBackground = Color(0xFF001F2A)
+val KanoasSurface = Color(0xFFF8FDFF)
+val KanoasOnSurface = Color(0xFF001F2A)
+val KanoasSurfaceVariant = Color(0xFFDDE3EA)
+val KanoasOnSurfaceVariant = Color(0xFF41484D)
+val KanoasOutline = Color(0xFF72787E)
 
 // --- Dark Primary ---
-val KanoasDarkPrimary = Color(0xFFD0BCFF)
-val KanoasDarkOnPrimary = Color(0xFF381E72)
-val KanoasDarkPrimaryContainer = Color(0xFF4F378B)
-val KanoasDarkOnPrimaryContainer = Color(0xFFEADDFF)
+val KanoasDarkPrimary = Color(0xFF8DCDFF)
+val KanoasDarkOnPrimary = Color(0xFF00344F)
+val KanoasDarkPrimaryContainer = Color(0xFF004C71)
+val KanoasDarkOnPrimaryContainer = Color(0xFFCAE6FF)
 
 // --- Dark Secondary ---
-val KanoasDarkSecondary = Color(0xFFCCC2DC)
-val KanoasDarkOnSecondary = Color(0xFF332D41)
-val KanoasDarkSecondaryContainer = Color(0xFF4A4458)
-val KanoasDarkOnSecondaryContainer = Color(0xFFE8DEF8)
+val KanoasDarkSecondary = Color(0xFFAAC7FF)
+val KanoasDarkOnSecondary = Color(0xFF002F64)
+val KanoasDarkSecondaryContainer = Color(0xFF00458D)
+val KanoasDarkOnSecondaryContainer = Color(0xFFD6E3FF)
 
 // --- Dark Tertiary ---
-val KanoasDarkTertiary = Color(0xFFEFB8C8)
-val KanoasDarkOnTertiary = Color(0xFF492532)
-val KanoasDarkTertiaryContainer = Color(0xFF633B48)
-val KanoasDarkOnTertiaryContainer = Color(0xFFFFD8E4)
+val KanoasDarkTertiary = Color(0xFFFFB68C)
+val KanoasDarkOnTertiary = Color(0xFF502400)
+val KanoasDarkTertiaryContainer = Color(0xFF723600)
+val KanoasDarkOnTertiaryContainer = Color(0xFFFFDBC8)
 
 // --- Dark Error ---
-val KanoasDarkError = Color(0xFFF2B8B5)
-val KanoasDarkOnError = Color(0xFF601410)
-val KanoasDarkErrorContainer = Color(0xFF8C1D18)
-val KanoasDarkOnErrorContainer = Color(0xFFF9DEDC)
+val KanoasDarkError = Color(0xFFFFB4AB)
+val KanoasDarkOnError = Color(0xFF690005)
+val KanoasDarkErrorContainer = Color(0xFF93000A)
+val KanoasDarkOnErrorContainer = Color(0xFFFFDAD6)
+
+// --- Dark Background & Surface ---
+val KanoasDarkBackground = Color(0xFF001F2A)
+val KanoasDarkOnBackground = Color(0xFFBFE9FF)
+val KanoasDarkSurface = Color(0xFF001F2A)
+val KanoasDarkOnSurface = Color(0xFFBFE9FF)
+val KanoasDarkSurfaceVariant = Color(0xFF41484D)
+val KanoasDarkOnSurfaceVariant = Color(0xFFC1C7CE)
+val KanoasDarkOutline = Color(0xFF8B9198)
