@@ -11,24 +11,16 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-// Logo colors (matching the user's design)
 private val LogoBlueLight = Color(0xFF00A8E8)
 private val LogoBlueDark = Color(0xFF0077B6)
 private val LogoBlueDeep = Color(0xFF023E8A)
 private val LogoOrangeLight = Color(0xFFFFA94D)
 private val LogoOrangeDark = Color(0xFFE87B35)
 
-/**
- * Logo do Kanoas — design fluido com ondas azuis e detalhe laranja,
- * inspirado no ícone fornecido pelo usuário.
- *
- * Renderizado via Canvas (sem dependência de assets).
- */
 @Composable
 fun KanoasLogo(
     modifier: Modifier = Modifier,
@@ -41,7 +33,6 @@ fun KanoasLogo(
         val cy = h / 2f
         val radius = w * 0.45f
 
-        // Background circle with gradient
         drawCircle(
             brush = Brush.linearGradient(
                 colors = listOf(LogoBlueDark, LogoBlueDeep),
@@ -52,13 +43,8 @@ fun KanoasLogo(
             center = Offset(cx, cy),
         )
 
-        // Inner wave / "K" shape — upper stroke (blue-to-light)
         drawWaveUpper(cx, cy, radius)
-
-        // Inner wave / "K" shape — lower stroke (orange accent)
         drawWaveLower(cx, cy, radius)
-
-        // Central arc highlight (light blue)
         drawHighlight(cx, cy, radius)
     }
 }

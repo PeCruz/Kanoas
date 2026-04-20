@@ -2,17 +2,6 @@ package br.com.kanoas.shared.kanban.domain.validation
 
 import br.com.kanoas.shared.core.validation.ValidationResult
 
-/**
- * Regras de validação para criação/edição de Task.
- *
- *  - Name: obrigatório, máx. 50 chars
- *  - Priority: obrigatório, 1..5
- *  - Description: opcional, máx. 3000 chars
- *  - Comment: opcional, máx. 2000 chars
- *  - Attachment: máx. 100 MB
- *  - Start Date: dia atual
- *  - End Date: obrigatório, >= hoje
- */
 object TaskValidator {
 
     const val NAME_MAX_LENGTH: Int = 50
