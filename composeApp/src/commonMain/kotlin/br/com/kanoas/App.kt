@@ -11,11 +11,6 @@ import br.com.kanoas.presentation.core.theme.ThemeViewModel
 import org.koin.compose.KoinContext
 import org.koin.compose.viewmodel.koinViewModel
 
-/**
- * Composable raiz da aplicação.
- * Aplica o tema (com suporte a dark/light mode via ThemeViewModel)
- * e injeta o contexto do Koin.
- */
 @Composable
 fun App() {
     KoinContext {

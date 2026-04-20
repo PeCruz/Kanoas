@@ -1,4 +1,4 @@
-package br.com.kanoas.presentation.kanban.addtask
+package br.com.kanoas.presentation.kanban.createtask
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,44 +12,44 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class AddTaskViewModel(
+class CreateTaskViewModel(
     private val today: () -> Long = { 0L },
-) : ViewModel(), MviViewModel<AddTaskState, AddTaskIntent, AddTaskEffect> {
+) : ViewModel(), MviViewModel<CreateTaskState, CreateTaskIntent, CreateTaskEffect> {
 
-    private val _state = MutableStateFlow(AddTaskState(startEpochDay = today()))
-    override val state: StateFlow<AddTaskState> = _state.asStateFlow()
+    private val _state = MutableStateFlow(CreateTaskState(startEpochDay = today()))
+    override val state: StateFlow<CreateTaskState> = _state.asStateFlow()
 
-    private val _effects = MutableSharedFlow<AddTaskEffect>()
-    override val effects: SharedFlow<AddTaskEffect> = _effects.asSharedFlow()
+    private val _effects = MutableSharedFlow<CreateTaskEffect>()
+    override val effects: SharedFlow<CreateTaskEffect> = _effects.asSharedFlow()
 
-    override fun handleIntent(intent: AddTaskIntent) {
+    override fun handleIntent(intent: CreateTaskIntent) {
         when (intent) {
-            is AddTaskIntent.NameChanged -> {
+            is CreateTaskIntent.NameChanged -> {
                 val v = TaskValidator.validateName(intent.value)
                 updateState { copy(name = intent.value, nameError = v.errorMessage) }
             }
 
-            is AddTaskIntent.PriorityChanged -> {
+            is CreateTaskIntent.PriorityChanged -> {
                 val v = TaskValidator.validatePriority(intent.value)
                 updateState { copy(priority = intent.value, priorityError = v.errorMessage) }
             }
 
-            is AddTaskIntent.DescriptionChanged -> {
+            is CreateTaskIntent.DescriptionChanged -> {
                 val v = TaskValidator.validateDescription(intent.value)
                 updateState { copy(description = intent.value, descriptionError = v.errorMessage) }
             }
 
-            is AddTaskIntent.CommentChanged -> {
+            is CreateTaskIntent.CommentChanged -> {
                 val v = TaskValidator.validateComment(intent.value)
                 updateState { copy(comment = intent.value, commentError = v.errorMessage) }
             }
 
-            is AddTaskIntent.EndDateChanged -> {
+            is CreateTaskIntent.EndDateChanged -> {
                 val v = TaskValidator.validateEndDate(intent.epochDay, today())
                 updateState { copy(endEpochDay = intent.epochDay, endDateError = v.errorMessage) }
             }
 
-            is AddTaskIntent.AttachmentSelected -> {
+            is CreateTaskIntent.AttachmentSelected -> {
                 val v = TaskValidator.validateAttachmentSize(intent.sizeBytes)
                 updateState {
                     copy(
@@ -60,42 +60,52 @@ class AddTaskViewModel(
                 }
             }
 
-            is AddTaskIntent.AttachmentCleared -> {
+            is CreateTaskIntent.AttachmentCleared -> {
                 updateState {
-                    copy(attachmentName = null, attachmentSizeBytes = 0L, attachmentError = null)
+                    copy(
+                        attachmentName = null,
+                        attachmentSizeBytes = 0L,
+                        attachmentError = null,
+                    )
                 }
             }
 
-            is AddTaskIntent.Submit -> {
-                val s = _state.value
-                if (s.canSubmit) {
-                    viewModelScope.launch { _effects.emit(AddTaskEffect.TaskCreated) }
+            is CreateTaskIntent.Submit -> {
+                if (_state.value.canSubmit) {
+                    viewModelScope.launch { _effects.emit(CreateTaskEffect.TaskCreated) }
                 } else {
                     viewModelScope.launch {
-                        _effects.emit(AddTaskEffect.ShowError("Preencha todos os campos obrigatorios"))
+                        _effects.emit(
+                            CreateTaskEffect.ShowError("Preencha todos os campos obrigatórios"),
+                        )
                     }
                 }
             }
 
-            is AddTaskIntent.Dismiss -> {
-                viewModelScope.launch { _effects.emit(AddTaskEffect.Dismissed) }
+            is CreateTaskIntent.NavigateBack -> {
+                viewModelScope.launch { _effects.emit(CreateTaskEffect.GoBack) }
             }
         }
     }
 
-    private fun updateState(transform: AddTaskState.() -> AddTaskState) {
+    private fun updateState(transform: CreateTaskState.() -> CreateTaskState) {
         val newState = _state.value.transform()
-        _state.value = newState.copy(canSubmit = computeCanSubmit(newState))
+        _state.value = newState.copy(
+            canSubmit = computeCanSubmit(newState),
+            hasUnsavedChanges = computeHasUnsavedChanges(newState),
+        )
     }
 
-    private fun computeCanSubmit(s: AddTaskState): Boolean =
+    private fun computeCanSubmit(s: CreateTaskState): Boolean =
         TaskValidator.validateName(s.name).isValid &&
             TaskValidator.validatePriority(s.priority).isValid &&
             TaskValidator.validateEndDate(s.endEpochDay, today()).isValid &&
             TaskValidator.validateDescription(s.description).isValid &&
             TaskValidator.validateComment(s.comment).isValid &&
-            TaskValidator.validateAttachmentSize(s.attachmentSizeBytes).isValid &&
-            s.nameError == null &&
-            s.priorityError == null &&
-            s.endDateError == null
+            TaskValidator.validateAttachmentSize(s.attachmentSizeBytes).isValid
+
+    private fun computeHasUnsavedChanges(s: CreateTaskState): Boolean =
+        s.name.isNotEmpty() ||
+            s.description.isNotEmpty() ||
+            s.comment.isNotEmpty()
 }

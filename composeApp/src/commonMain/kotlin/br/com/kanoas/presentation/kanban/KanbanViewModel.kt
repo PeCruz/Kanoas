@@ -13,6 +13,8 @@ import kotlinx.coroutines.launch
 
 class KanbanViewModel : ViewModel(), MviViewModel<KanbanState, KanbanIntent, KanbanEffect> {
 
+    private var taskIdCounter = 0L
+
     private val _state = MutableStateFlow(KanbanState())
     override val state: StateFlow<KanbanState> = _state.asStateFlow()
 
@@ -23,9 +25,10 @@ class KanbanViewModel : ViewModel(), MviViewModel<KanbanState, KanbanIntent, Kan
         when (intent) {
             is KanbanIntent.LoadBoard -> {
                 val defaultColumns = listOf(
+                    KanbanColumn(id = "col_backlog", title = "Backlog"),
                     KanbanColumn(id = "col_todo", title = "A Fazer"),
                     KanbanColumn(id = "col_progress", title = "Em Progresso"),
-                    KanbanColumn(id = "col_done", title = "Concluído"),
+                    KanbanColumn(id = "col_done", title = "Concluido"),
                 )
                 _state.value = _state.value.copy(
                     boardId = "board_default",
@@ -74,6 +77,20 @@ class KanbanViewModel : ViewModel(), MviViewModel<KanbanState, KanbanIntent, Kan
                 viewModelScope.launch {
                     _effects.emit(KanbanEffect.NavigateToSettings)
                 }
+            }
+
+            is KanbanIntent.TaskCreated -> {
+                val newTask = KanbanTask(
+                    id = "task_${++taskIdCounter}",
+                    columnId = "col_backlog",
+                    name = intent.name,
+                    priority = intent.priority,
+                )
+                val tasks = _state.value.tasksByColumn.toMutableMap()
+                val backlogTasks = tasks["col_backlog"].orEmpty()
+                tasks["col_backlog"] = backlogTasks + newTask
+                _state.value = _state.value.copy(tasksByColumn = tasks)
+                recomputeFiltered()
             }
 
             is KanbanIntent.AddTestTasks -> {

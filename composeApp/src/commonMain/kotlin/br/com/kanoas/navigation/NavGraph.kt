@@ -9,6 +9,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.navigation.NavHostController
@@ -23,10 +24,11 @@ import br.com.kanoas.presentation.financial.FinancialScreen
 import br.com.kanoas.presentation.financial.FinancialViewModel
 import br.com.kanoas.presentation.financial.addtransaction.AddTransactionDialog
 import br.com.kanoas.presentation.financial.addtransaction.AddTransactionViewModel
+import br.com.kanoas.presentation.kanban.KanbanIntent
 import br.com.kanoas.presentation.kanban.KanbanScreen
 import br.com.kanoas.presentation.kanban.KanbanViewModel
-import br.com.kanoas.presentation.kanban.addtask.AddTaskDialog
-import br.com.kanoas.presentation.kanban.addtask.AddTaskViewModel
+import br.com.kanoas.presentation.kanban.createtask.CreateTaskScreen
+import br.com.kanoas.presentation.kanban.createtask.CreateTaskViewModel
 import br.com.kanoas.presentation.login.LoginScreen
 import br.com.kanoas.presentation.login.LoginViewModel
 import br.com.kanoas.presentation.settings.SettingsScreen
@@ -38,15 +40,13 @@ import org.koin.compose.viewmodel.koinViewModel
 object Routes {
     const val LOGIN = "login"
     const val HOME = "home"
+    const val CREATE_TASK = "create_task"
     const val SETTINGS = "settings"
 }
 
 /**
  * Grafo de navegação principal.
- * Login → Home (com BottomNav: Home / Financeiro) → Settings.
- *
- * O [ThemeViewModel] é compartilhado entre todas as telas para
- * que o botão de light/dark mode funcione em qualquer lugar.
+ * Login → Home (BottomNav: Home / Financeiro) → CreateTask | Settings.
  */
 @Composable
 fun NavGraph(themeViewModel: ThemeViewModel) {
@@ -69,10 +69,40 @@ fun NavGraph(themeViewModel: ThemeViewModel) {
             )
         }
 
-        composable(route = Routes.HOME) {
+        composable(route = Routes.HOME) { backStackEntry ->
+            // Observe task created result from CreateTask screen
+            val savedStateHandle = backStackEntry.savedStateHandle
+            val createdName = savedStateHandle.get<String>("created_task_name")
+            val createdPriority = savedStateHandle.get<Int>("created_task_priority")
+
             HomeWithBottomNav(
                 navController = navController,
                 themeViewModel = themeViewModel,
+                createdTaskName = createdName,
+                createdTaskPriority = createdPriority,
+                onTaskConsumed = {
+                    savedStateHandle.remove<String>("created_task_name")
+                    savedStateHandle.remove<Int>("created_task_priority")
+                },
+            )
+        }
+
+        composable(route = Routes.CREATE_TASK) {
+            val createTaskViewModel: CreateTaskViewModel = koinViewModel()
+            CreateTaskScreen(
+                viewModel = createTaskViewModel,
+                themeViewModel = themeViewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateSettings = { navController.navigate(Routes.SETTINGS) },
+                onTaskCreated = { name, priority ->
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("created_task_name", name)
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("created_task_priority", priority)
+                    navController.popBackStack()
+                },
             )
         }
 
@@ -87,19 +117,30 @@ fun NavGraph(themeViewModel: ThemeViewModel) {
 
 /**
  * Tela principal pós-login com BottomNav (Home / Financeiro).
- * Cada aba tem seu próprio conteúdo + dialogs.
  */
 @Composable
 private fun HomeWithBottomNav(
     navController: NavHostController,
     themeViewModel: ThemeViewModel,
+    createdTaskName: String? = null,
+    createdTaskPriority: Int? = null,
+    onTaskConsumed: () -> Unit = {},
 ) {
     val bottomNavViewModel: BottomNavViewModel = koinViewModel()
     val bottomNavState by bottomNavViewModel.state.collectAsState()
 
     // Kanban
     val kanbanViewModel: KanbanViewModel = koinViewModel()
-    val kanbanState by kanbanViewModel.state.collectAsState()
+
+    // Consume created task from CreateTaskScreen
+    LaunchedEffect(createdTaskName, createdTaskPriority) {
+        if (createdTaskName != null && createdTaskPriority != null) {
+            kanbanViewModel.handleIntent(
+                KanbanIntent.TaskCreated(createdTaskName, createdTaskPriority),
+            )
+            onTaskConsumed()
+        }
+    }
 
     // Financial
     val financialViewModel: FinancialViewModel = koinViewModel()
@@ -146,6 +187,9 @@ private fun HomeWithBottomNav(
                 KanbanScreen(
                     viewModel = kanbanViewModel,
                     themeViewModel = themeViewModel,
+                    onNavigateCreateTask = {
+                        navController.navigate(Routes.CREATE_TASK)
+                    },
                     onNavigateSettings = {
                         navController.navigate(Routes.SETTINGS)
                     },
@@ -162,25 +206,6 @@ private fun HomeWithBottomNav(
     }
 
     // --- Dialogs ---
-
-    // AddTask Dialog
-    if (kanbanState.isAddTaskDialogVisible) {
-        val addTaskViewModel: AddTaskViewModel = koinViewModel()
-        AddTaskDialog(
-            viewModel = addTaskViewModel,
-            onDismiss = {
-                kanbanViewModel.handleIntent(
-                    br.com.kanoas.presentation.kanban.KanbanIntent.DismissAddTaskDialog,
-                )
-            },
-            onTaskCreated = {
-                kanbanViewModel.handleIntent(
-                    br.com.kanoas.presentation.kanban.KanbanIntent.DismissAddTaskDialog,
-                )
-                // TODO: reload tasks from Supabase
-            },
-        )
-    }
 
     // AddTransaction Dialog
     if (financialState.isAddDialogVisible) {

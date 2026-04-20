@@ -2,12 +2,6 @@ package br.com.kanoas.shared.auth.domain.validation
 
 import br.com.kanoas.shared.core.validation.ValidationResult
 
-/**
- * Validações do formulário de Login.
- *
- *  - Username: obrigatório, mínimo 3 chars, máximo 50
- *  - Password: obrigatório, mínimo 6 chars
- */
 object LoginValidator {
 
     const val USERNAME_MIN_LENGTH: Int = 3
@@ -17,10 +11,10 @@ object LoginValidator {
     fun validateUsername(username: String): ValidationResult {
         val trimmed = username.trim()
         return when {
-            trimmed.isEmpty() -> ValidationResult.invalid("Nome de usuário é obrigatório")
+            trimmed.isEmpty() -> ValidationResult.invalid("Usuário é obrigatório")
             trimmed.length < USERNAME_MIN_LENGTH ->
                 ValidationResult.invalid("Mínimo de $USERNAME_MIN_LENGTH caracteres")
-            trimmed.length > USERNAME_MAX_LENGTH ->
+            username.length > USERNAME_MAX_LENGTH ->
                 ValidationResult.invalid("Máximo de $USERNAME_MAX_LENGTH caracteres")
             else -> ValidationResult.Valid
         }

@@ -40,12 +40,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import br.com.kanoas.core.ui.components.ThemeToggleButton
 import br.com.kanoas.presentation.core.theme.ThemeViewModel
 
 /**
- * Tela principal do Kanban — header fixo com busca + add + theme + settings,
+ * Tela principal do Kanban — header fixo com busca + add (verde) + theme + settings,
  * colunas horizontais com cards de tarefas.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +54,7 @@ import br.com.kanoas.presentation.core.theme.ThemeViewModel
 fun KanbanScreen(
     viewModel: KanbanViewModel,
     themeViewModel: ThemeViewModel,
+    onNavigateCreateTask: () -> Unit = {},
     onNavigateSettings: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
@@ -64,7 +66,7 @@ fun KanbanScreen(
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is KanbanEffect.OpenAddTaskDialog -> { /* dialog controlled via state */ }
+                is KanbanEffect.OpenAddTaskDialog -> { /* not used anymore */ }
                 is KanbanEffect.NavigateToSettings -> onNavigateSettings()
                 is KanbanEffect.ShowError -> { /* TODO: snackbar */ }
             }
@@ -95,14 +97,14 @@ fun KanbanScreen(
                     )
                 },
                 actions = {
-                    // Add task button
+                    // Add task button (green)
                     IconButton(
-                        onClick = { viewModel.handleIntent(KanbanIntent.AddTaskClicked) },
+                        onClick = onNavigateCreateTask,
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Adicionar tarefa",
-                            tint = MaterialTheme.colorScheme.tertiary,
+                            tint = Color(0xFF2E7D32),
                         )
                     }
 
@@ -255,11 +257,5 @@ private fun PriorityBadge(priority: Int) {
         text = label,
         style = MaterialTheme.typography.labelSmall,
         color = color,
-        modifier = Modifier
-            .background(
-                color = color.copy(alpha = 0.12f),
-                shape = RoundedCornerShape(4.dp),
-            )
-            .padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }
