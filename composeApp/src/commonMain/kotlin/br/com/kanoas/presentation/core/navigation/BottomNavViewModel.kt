@@ -1,6 +1,7 @@
 package br.com.kanoas.presentation.core.navigation
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import br.com.kanoas.shared.core.mvi.MviViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -8,6 +9,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class BottomNavViewModel :
     ViewModel(),
@@ -20,6 +22,13 @@ class BottomNavViewModel :
     override val effects: SharedFlow<BottomNavEffect> = _effects.asSharedFlow()
 
     override fun handleIntent(intent: BottomNavIntent) {
-        TODO("Day 3 TDD — implementar após Red")
+        when (intent) {
+            is BottomNavIntent.TabSelected -> {
+                _state.value = _state.value.copy(current = intent.tab)
+                viewModelScope.launch {
+                    _effects.emit(BottomNavEffect.NavigateTo(intent.tab))
+                }
+            }
+        }
     }
 }

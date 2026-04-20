@@ -5,7 +5,6 @@ import br.com.kanoas.shared.core.validation.ValidationResult
 /**
  * Validações do formulário de Login.
  *
- * Espec (Day 3 TDD):
  *  - Username: obrigatório, mínimo 3 chars, máximo 50
  *  - Password: obrigatório, mínimo 6 chars
  */
@@ -16,10 +15,24 @@ object LoginValidator {
     const val PASSWORD_MIN_LENGTH: Int = 6
 
     fun validateUsername(username: String): ValidationResult {
-        TODO("Day 3 TDD — implementar após Red")
+        val trimmed = username.trim()
+        return when {
+            trimmed.isEmpty() -> ValidationResult.invalid("Nome de usuário é obrigatório")
+            trimmed.length < USERNAME_MIN_LENGTH ->
+                ValidationResult.invalid("Mínimo de $USERNAME_MIN_LENGTH caracteres")
+            trimmed.length > USERNAME_MAX_LENGTH ->
+                ValidationResult.invalid("Máximo de $USERNAME_MAX_LENGTH caracteres")
+            else -> ValidationResult.Valid
+        }
     }
 
     fun validatePassword(password: String): ValidationResult {
-        TODO("Day 3 TDD — implementar após Red")
+        val trimmed = password.trim()
+        return when {
+            trimmed.isEmpty() -> ValidationResult.invalid("Senha é obrigatória")
+            trimmed.length < PASSWORD_MIN_LENGTH ->
+                ValidationResult.invalid("Mínimo de $PASSWORD_MIN_LENGTH caracteres")
+            else -> ValidationResult.Valid
+        }
     }
 }
