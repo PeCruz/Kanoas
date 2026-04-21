@@ -1,5 +1,6 @@
 package br.com.kanoas.presentation.kanban.taskdetail
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +27,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -225,7 +227,15 @@ fun TaskDetailSheet(
 
             // --- End Date (DatePicker) ---
             var showDatePicker by remember { mutableStateOf(false) }
-            val datePickerState = rememberDatePickerState()
+            val todayMillis = remember { (System.currentTimeMillis() / 86_400_000L) * 86_400_000L }
+            val datePickerState = rememberDatePickerState(
+                selectableDates = object : SelectableDates {
+                    override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                        return utcTimeMillis >= todayMillis
+                    }
+                    override fun isSelectableYear(year: Int): Boolean = year >= 2024
+                },
+            )
 
             OutlinedTextField(
                 value = state.endEpochDay?.let { epochDayToDateString(it) } ?: "",
@@ -236,14 +246,13 @@ fun TaskDetailSheet(
                 isError = state.endDateError != null,
                 supportingText = state.endDateError?.let { e -> { Text(e) } },
                 trailingIcon = {
-                    IconButton(onClick = { showDatePicker = true }) {
-                        Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = "Selecionar data",
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = "Selecionar data",
+                    )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                enabled = false,
+                modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
             )
 
             if (showDatePicker) {

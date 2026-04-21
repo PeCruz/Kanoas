@@ -1,5 +1,6 @@
 package br.com.kanoas.presentation.kanban.createtask
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -53,9 +55,8 @@ import br.com.kanoas.presentation.core.theme.ThemeViewModel
  * Header fixo: ← Voltar | "Criando Tarefa" | ☀/🌙 | ⚙
  *
  * Campos: Name, Priority (dropdown), Description, Comment,
- * StartDate (auto), EndDate, Attachment.
- *
- * Se o usuário tentar sair com campos preenchidos, exibe confirmação.
+ * StartDate (auto), EndDate (DatePicker com datas passadas bloqueadas),
+ * Attachment (file picker do sistema).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,9 +66,11 @@ fun CreateTaskScreen(
     onNavigateBack: () -> Unit,
     onNavigateSettings: () -> Unit,
     onTaskCreated: (name: String, priority: Int) -> Unit = { _, _ -> },
+    onPickFile: (() -> Unit)? = null,
 ) {
     val state by viewModel.state.collectAsState()
     var showExitDialog by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
@@ -82,7 +85,6 @@ fun CreateTaskScreen(
         }
     }
 
-    // Lógica de saída: se tem conteúdo, mostra dialog; senão, volta direto
     val handleBack: () -> Unit = {
         if (state.hasUnsavedChanges) {
             showExitDialog = true
@@ -90,6 +92,26 @@ fun CreateTaskScreen(
             viewModel.handleIntent(CreateTaskIntent.NavigateBack)
         }
     }
+
+    // DatePicker state: bloqueia datas antes de hoje
+    val todayMillis = remember {
+        // epoch day 0 → usar o valor correto do dia atual em millis
+        val now = System.currentTimeMillis()
+        // Início do dia UTC de hoje
+        (now / 86_400_000L) * 86_400_000L
+    }
+
+    val datePickerState = rememberDatePickerState(
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                return utcTimeMillis >= todayMillis
+            }
+
+            override fun isSelectableYear(year: Int): Boolean {
+                return year >= 2024
+            }
+        },
+    )
 
     Scaffold(
         topBar = {
@@ -225,9 +247,7 @@ fun CreateTaskScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             // --- End Date (DatePicker) ---
-            var showDatePicker by remember { mutableStateOf(false) }
-            val datePickerState = rememberDatePickerState()
-
+            // Clicking anywhere on the field opens the date picker immediately
             OutlinedTextField(
                 value = state.endEpochDay?.let { epochDayToDateString(it) } ?: "",
                 onValueChange = {},
@@ -237,14 +257,15 @@ fun CreateTaskScreen(
                 isError = state.endDateError != null,
                 supportingText = state.endDateError?.let { e -> { Text(e) } },
                 trailingIcon = {
-                    IconButton(onClick = { showDatePicker = true }) {
-                        Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = "Selecionar data",
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = "Selecionar data",
+                    )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDatePicker = true },
+                enabled = false, // Disable typing; click opens picker
             )
 
             if (showDatePicker) {
@@ -275,14 +296,13 @@ fun CreateTaskScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // --- Attachment ---
+            // --- Attachment (uses device file picker) ---
             Row(modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(
                     onClick = {
-                        // TODO: integrar com file picker nativo
-                        viewModel.handleIntent(
-                            CreateTaskIntent.AttachmentSelected("arquivo.pdf", 0L),
-                        )
+                        if (onPickFile != null) {
+                            onPickFile()
+                        }
                     },
                 ) {
                     Text("Anexar Arquivo")
@@ -366,11 +386,9 @@ private fun priorityLabel(priority: Int): String = when (priority) {
 
 /**
  * Converte epoch day (dias desde 1970-01-01) para uma string dd/MM/yyyy.
- * Algoritmo civil calendar simples.
  */
 private fun epochDayToDateString(epochDay: Long): String {
-    // Algoritmo baseado em dias civis
-    var z = epochDay + 719468
+    val z = epochDay + 719468
     val era = (if (z >= 0) z else z - 146096) / 146097
     val doe = z - era * 146097
     val yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
@@ -380,7 +398,6 @@ private fun epochDayToDateString(epochDay: Long): String {
     val d = doy - (153 * mp + 2) / 5 + 1
     val m = mp + (if (mp < 10) 3 else -9)
     val year = y + (if (m <= 2) 1 else 0)
-
     val dd = d.toString().padStart(2, '0')
     val mm = m.toString().padStart(2, '0')
     return "$dd/$mm/$year"

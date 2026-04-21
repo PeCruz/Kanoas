@@ -4,19 +4,11 @@
     <application
         android:name=".KanoasApplication"
         android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.Kanoas">
-
-        <!--
-            NOTA: Os ícones @mipmap/ic_launcher foram removidos intencionalmente.
-            O projeto usa Compose Multiplatform e ainda não tem recursos de ícone gerados.
-            Para adicionar ícones, use o Android Studio Image Asset Studio e adicione
-            os mipmap nas densidades: mdpi, hdpi, xhdpi, xxhdpi, xxxhdpi.
-            Quando os ícones existirem, adicione novamente:
-                android:icon="@mipmap/ic_launcher"
-                android:roundIcon="@mipmap/ic_launcher_round"
-        -->
 
         <activity
             android:name=".MainActivity"
