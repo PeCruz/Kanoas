@@ -27,6 +27,8 @@ import br.com.kanoas.presentation.financial.addtransaction.AddTransactionViewMod
 import br.com.kanoas.presentation.kanban.KanbanIntent
 import br.com.kanoas.presentation.kanban.KanbanScreen
 import br.com.kanoas.presentation.kanban.KanbanViewModel
+import br.com.kanoas.core.platform.rememberFilePicker
+import br.com.kanoas.presentation.kanban.createtask.CreateTaskIntent
 import br.com.kanoas.presentation.kanban.createtask.CreateTaskScreen
 import br.com.kanoas.presentation.kanban.createtask.CreateTaskViewModel
 import br.com.kanoas.presentation.login.LoginScreen
@@ -89,6 +91,16 @@ fun NavGraph(themeViewModel: ThemeViewModel) {
 
         composable(route = Routes.CREATE_TASK) {
             val createTaskViewModel: CreateTaskViewModel = koinViewModel()
+
+            val launchFilePicker = rememberFilePicker { pickedFile ->
+                createTaskViewModel.handleIntent(
+                    CreateTaskIntent.AttachmentSelected(
+                        name = pickedFile.name,
+                        sizeBytes = pickedFile.sizeBytes,
+                    ),
+                )
+            }
+
             CreateTaskScreen(
                 viewModel = createTaskViewModel,
                 themeViewModel = themeViewModel,
@@ -103,6 +115,7 @@ fun NavGraph(themeViewModel: ThemeViewModel) {
                         ?.set("created_task_priority", priority)
                     navController.popBackStack()
                 },
+                onPickFile = launchFilePicker,
             )
         }
 
