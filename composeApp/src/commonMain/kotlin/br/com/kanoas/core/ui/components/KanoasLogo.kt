@@ -102,9 +102,7 @@ private fun DrawScope.drawHighlight(cx: Float, cy: Float, radius: Float) {
                 Color.Transparent,
             ),
             center = Offset(cx - radius * 0.25f, cy - radius * 0.25f),
-            radius = radius * 0.7f,
+            radius = radius * 0.6f,
         ),
-        radius = radius,
-        center = Offset(cx, cy),
     )
 }

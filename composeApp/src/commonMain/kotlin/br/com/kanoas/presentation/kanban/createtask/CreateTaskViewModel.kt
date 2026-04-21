@@ -105,7 +105,5 @@ class CreateTaskViewModel(
             TaskValidator.validateAttachmentSize(s.attachmentSizeBytes).isValid
 
     private fun computeHasUnsavedChanges(s: CreateTaskState): Boolean =
-        s.name.isNotEmpty() ||
-            s.description.isNotEmpty() ||
-            s.comment.isNotEmpty()
+        s.name.isNotBlank() || s.description.isNotBlank() || s.comment.isNotBlank()
 }

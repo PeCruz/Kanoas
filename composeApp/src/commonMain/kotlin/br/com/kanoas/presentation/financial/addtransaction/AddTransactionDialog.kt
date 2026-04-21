@@ -209,7 +209,7 @@ fun AddTransactionDialog(
                         onClick = { viewModel.handleIntent(AddTransactionIntent.Submit) },
                         enabled = state.canSubmit,
                     ) {
-                        Text("Salvar")
+                        Text("Adicionar")
                     }
                 }
             }

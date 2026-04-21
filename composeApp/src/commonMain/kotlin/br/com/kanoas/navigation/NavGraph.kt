@@ -221,7 +221,6 @@ private fun HomeWithBottomNav(
                 financialViewModel.handleIntent(
                     br.com.kanoas.presentation.financial.FinancialIntent.DismissAddDialog,
                 )
-                // TODO: reload transactions from Supabase
             },
         )
     }

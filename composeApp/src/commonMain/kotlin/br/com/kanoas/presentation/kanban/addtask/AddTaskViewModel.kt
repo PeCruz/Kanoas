@@ -95,7 +95,5 @@ class AddTaskViewModel(
             TaskValidator.validateDescription(s.description).isValid &&
             TaskValidator.validateComment(s.comment).isValid &&
             TaskValidator.validateAttachmentSize(s.attachmentSizeBytes).isValid &&
-            s.nameError == null &&
-            s.priorityError == null &&
-            s.endDateError == null
+            s.endEpochDay != null
 }
