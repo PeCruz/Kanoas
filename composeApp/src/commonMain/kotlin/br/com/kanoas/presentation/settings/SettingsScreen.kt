@@ -70,7 +70,6 @@ fun SettingsScreen(
                 text = "Tema, notificações e outras configurações serão adicionadas aqui.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth(),
             )
         }
     }

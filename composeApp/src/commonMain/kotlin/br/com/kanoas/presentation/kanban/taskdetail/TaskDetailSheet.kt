@@ -1,9 +1,8 @@
-package br.com.kanoas.presentation.kanban.createtask
+package br.com.kanoas.presentation.kanban.taskdetail
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -12,9 +11,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -26,13 +24,11 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,103 +37,82 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import br.com.kanoas.core.ui.components.ThemeToggleButton
-import br.com.kanoas.presentation.core.theme.ThemeViewModel
 
 /**
- * Tela "Criando Tarefa" — tela completa (não dialog) para criar uma task.
+ * Bottom sheet exibido sobre a tela Kanban quando o usuário clica em um card de tarefa.
  *
- * Header fixo: ← Voltar | "Criando Tarefa" | ☀/🌙 | ⚙
- *
- * Campos: Name, Priority (dropdown), Description, Comment,
- * StartDate (auto), EndDate, Attachment.
- *
- * Se o usuário tentar sair com campos preenchidos, exibe confirmação.
+ * Permite editar: Nome, Prioridade, Descrição, Comentário, Data de Fim, Coluna.
+ * Botão de deletar com confirmação: "Você tem certeza que deseja deletar a tarefa?"
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateTaskScreen(
-    viewModel: CreateTaskViewModel,
-    themeViewModel: ThemeViewModel,
-    onNavigateBack: () -> Unit,
-    onNavigateSettings: () -> Unit,
-    onTaskCreated: (name: String, priority: Int) -> Unit = { _, _ -> },
+fun TaskDetailSheet(
+    viewModel: TaskDetailViewModel,
+    sheetState: SheetState,
+    onDismiss: () -> Unit,
+    onTaskUpdated: (TaskDetailEffect.TaskUpdated) -> Unit,
+    onTaskDeleted: (String) -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
-    var showExitDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is CreateTaskEffect.TaskCreated -> {
-                    val currentState = viewModel.state.value
-                    onTaskCreated(currentState.name, currentState.priority ?: 3)
+                is TaskDetailEffect.TaskUpdated -> {
+                    onTaskUpdated(effect)
                 }
-                is CreateTaskEffect.GoBack -> onNavigateBack()
-                is CreateTaskEffect.ShowError -> { /* errors shown inline on fields */ }
+                is TaskDetailEffect.TaskDeleted -> {
+                    onTaskDeleted(effect.taskId)
+                }
+                is TaskDetailEffect.ShowError -> { /* errors shown inline */ }
+                is TaskDetailEffect.Dismissed -> onDismiss()
             }
         }
     }
 
-    // Lógica de saída: se tem conteúdo, mostra dialog; senão, volta direto
-    val handleBack: () -> Unit = {
-        if (state.hasUnsavedChanges) {
-            showExitDialog = true
-        } else {
-            viewModel.handleIntent(CreateTaskIntent.NavigateBack)
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Criando Tarefa",
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = handleBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Voltar",
-                        )
-                    }
-                },
-                actions = {
-                    ThemeToggleButton(themeViewModel = themeViewModel)
-                    IconButton(onClick = onNavigateSettings) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Configurações",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-            )
-        },
-    ) { innerPadding ->
+    ModalBottomSheet(
+        onDismissRequest = { viewModel.handleIntent(TaskDetailIntent.Dismiss) },
+        sheetState = sheetState,
+    ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+                .fillMaxWidth()
                 .imePadding()
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            // --- Header: title + delete icon ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Detalhes da Tarefa",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = { viewModel.handleIntent(TaskDetailIntent.DeleteClicked) },
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Deletar tarefa",
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // --- Name ---
             OutlinedTextField(
                 value = state.name,
-                onValueChange = { viewModel.handleIntent(CreateTaskIntent.NameChanged(it)) },
+                onValueChange = { viewModel.handleIntent(TaskDetailIntent.NameChanged(it)) },
                 label = { Text("Nome da tarefa *") },
                 singleLine = true,
                 isError = state.nameError != null,
@@ -170,12 +145,48 @@ fun CreateTaskScreen(
                     expanded = priorityExpanded,
                     onDismissRequest = { priorityExpanded = false },
                 ) {
-                    CreateTaskState.PRIORITY_OPTIONS.forEach { p ->
+                    PRIORITY_OPTIONS.forEach { p ->
                         DropdownMenuItem(
                             text = { Text(priorityLabel(p)) },
                             onClick = {
-                                viewModel.handleIntent(CreateTaskIntent.PriorityChanged(p))
+                                viewModel.handleIntent(TaskDetailIntent.PriorityChanged(p))
                                 priorityExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // --- Column Dropdown (mover tarefa) ---
+            var columnExpanded by remember { mutableStateOf(false) }
+            val currentColumn = state.availableColumns.find { it.id == state.columnId }
+
+            ExposedDropdownMenuBox(
+                expanded = columnExpanded,
+                onExpandedChange = { columnExpanded = it },
+            ) {
+                OutlinedTextField(
+                    value = currentColumn?.title ?: "",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Coluna") },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = columnExpanded)
+                    },
+                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                )
+                ExposedDropdownMenu(
+                    expanded = columnExpanded,
+                    onDismissRequest = { columnExpanded = false },
+                ) {
+                    state.availableColumns.forEach { col ->
+                        DropdownMenuItem(
+                            text = { Text(col.title) },
+                            onClick = {
+                                viewModel.handleIntent(TaskDetailIntent.ColumnChanged(col.id))
+                                columnExpanded = false
                             },
                         )
                     }
@@ -187,10 +198,10 @@ fun CreateTaskScreen(
             // --- Description ---
             OutlinedTextField(
                 value = state.description,
-                onValueChange = { viewModel.handleIntent(CreateTaskIntent.DescriptionChanged(it)) },
+                onValueChange = { viewModel.handleIntent(TaskDetailIntent.DescriptionChanged(it)) },
                 label = { Text("Descrição") },
-                minLines = 3,
-                maxLines = 6,
+                minLines = 2,
+                maxLines = 4,
                 isError = state.descriptionError != null,
                 supportingText = state.descriptionError?.let { e -> { Text(e) } },
                 modifier = Modifier.fillMaxWidth(),
@@ -201,24 +212,12 @@ fun CreateTaskScreen(
             // --- Comment ---
             OutlinedTextField(
                 value = state.comment,
-                onValueChange = { viewModel.handleIntent(CreateTaskIntent.CommentChanged(it)) },
+                onValueChange = { viewModel.handleIntent(TaskDetailIntent.CommentChanged(it)) },
                 label = { Text("Comentário") },
                 minLines = 2,
                 maxLines = 4,
                 isError = state.commentError != null,
                 supportingText = state.commentError?.let { e -> { Text(e) } },
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // --- Start Date (read-only) ---
-            OutlinedTextField(
-                value = "Hoje (automático)",
-                onValueChange = {},
-                readOnly = true,
-                enabled = false,
-                label = { Text("Data de Início") },
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -232,7 +231,7 @@ fun CreateTaskScreen(
                 value = state.endEpochDay?.let { epochDayToDateString(it) } ?: "",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Data de Término *") },
+                label = { Text("Data de Término") },
                 singleLine = true,
                 isError = state.endDateError != null,
                 supportingText = state.endDateError?.let { e -> { Text(e) } },
@@ -255,7 +254,7 @@ fun CreateTaskScreen(
                             onClick = {
                                 datePickerState.selectedDateMillis?.let { millis ->
                                     val epochDay = millis / 86_400_000L
-                                    viewModel.handleIntent(CreateTaskIntent.EndDateChanged(epochDay))
+                                    viewModel.handleIntent(TaskDetailIntent.EndDateChanged(epochDay))
                                 }
                                 showDatePicker = false
                             },
@@ -273,87 +272,46 @@ fun CreateTaskScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // --- Attachment ---
-            Row(modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(
-                    onClick = {
-                        // TODO: integrar com file picker nativo
-                        viewModel.handleIntent(
-                            CreateTaskIntent.AttachmentSelected("arquivo.pdf", 0L),
-                        )
-                    },
-                ) {
-                    Text("Anexar Arquivo")
-                }
-
-                if (state.attachmentName != null) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(
-                        onClick = { viewModel.handleIntent(CreateTaskIntent.AttachmentCleared) },
-                    ) {
-                        Text("Remover")
-                    }
-                }
-            }
-
-            if (state.attachmentName != null) {
-                Text(
-                    text = state.attachmentName ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-            if (state.attachmentError != null) {
-                Text(
-                    text = state.attachmentError ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // --- Submit Button ---
+            // --- Save Button ---
             Button(
-                onClick = { viewModel.handleIntent(CreateTaskIntent.Submit) },
-                enabled = state.canSubmit,
+                onClick = { viewModel.handleIntent(TaskDetailIntent.Save) },
+                enabled = state.hasChanges && state.nameError == null && state.priorityError == null,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
             ) {
-                Text("Criar Tarefa")
+                Text("Salvar Alterações")
             }
 
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
 
-    // --- Exit confirmation dialog ---
-    if (showExitDialog) {
+    // --- Delete confirmation dialog ---
+    if (state.isDeleteConfirmVisible) {
         AlertDialog(
-            onDismissRequest = { showExitDialog = false },
-            title = { Text("Sair da criação") },
-            text = { Text("Você tem certeza que deseja sair?") },
+            onDismissRequest = { viewModel.handleIntent(TaskDetailIntent.DeleteCancelled) },
+            title = { Text("Deletar tarefa") },
+            text = { Text("Você tem certeza que deseja deletar a tarefa?") },
             confirmButton = {
                 TextButton(
-                    onClick = {
-                        showExitDialog = false
-                        viewModel.handleIntent(CreateTaskIntent.NavigateBack)
-                    },
+                    onClick = { viewModel.handleIntent(TaskDetailIntent.DeleteConfirmed) },
                 ) {
-                    Text("Sim, sair")
+                    Text("Sim, deletar", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showExitDialog = false }) {
+                TextButton(
+                    onClick = { viewModel.handleIntent(TaskDetailIntent.DeleteCancelled) },
+                ) {
                     Text("Cancelar")
                 }
             },
         )
     }
 }
+
+private val PRIORITY_OPTIONS = listOf(1, 2, 3, 4, 5)
 
 private fun priorityLabel(priority: Int): String = when (priority) {
     1 -> "1 — Muito Baixa"
@@ -365,12 +323,10 @@ private fun priorityLabel(priority: Int): String = when (priority) {
 }
 
 /**
- * Converte epoch day (dias desde 1970-01-01) para uma string dd/MM/yyyy.
- * Algoritmo civil calendar simples.
+ * Converte epoch day (dias desde 1970-01-01) para string dd/MM/yyyy.
  */
 private fun epochDayToDateString(epochDay: Long): String {
-    // Algoritmo baseado em dias civis
-    var z = epochDay + 719468
+    val z = epochDay + 719468
     val era = (if (z >= 0) z else z - 146096) / 146097
     val doe = z - era * 146097
     val yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
@@ -380,8 +336,5 @@ private fun epochDayToDateString(epochDay: Long): String {
     val d = doy - (153 * mp + 2) / 5 + 1
     val m = mp + (if (mp < 10) 3 else -9)
     val year = y + (if (m <= 2) 1 else 0)
-
-    val dd = d.toString().padStart(2, '0')
-    val mm = m.toString().padStart(2, '0')
-    return "$dd/$mm/$year"
+    return "${d.toString().padStart(2, '0')}/${m.toString().padStart(2, '0')}/$year"
 }

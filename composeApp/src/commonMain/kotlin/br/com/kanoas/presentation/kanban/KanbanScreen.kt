@@ -1,6 +1,6 @@
 package br.com.kanoas.presentation.kanban
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,22 +32,27 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import br.com.kanoas.core.ui.components.ThemeToggleButton
 import br.com.kanoas.presentation.core.theme.ThemeViewModel
+import br.com.kanoas.presentation.kanban.taskdetail.TaskDetailEffect
+import br.com.kanoas.presentation.kanban.taskdetail.TaskDetailSheet
+import br.com.kanoas.presentation.kanban.taskdetail.TaskDetailViewModel
 
 /**
  * Tela principal do Kanban — header fixo com busca + add (verde) + theme + settings,
- * colunas horizontais com cards de tarefas.
+ * colunas horizontais com cards de tarefas clicáveis.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,7 +82,6 @@ fun KanbanScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    // Search input com ícone de lupa
                     OutlinedTextField(
                         value = state.searchQuery,
                         onValueChange = {
@@ -97,21 +101,14 @@ fun KanbanScreen(
                     )
                 },
                 actions = {
-                    // Add task button (green)
-                    IconButton(
-                        onClick = onNavigateCreateTask,
-                    ) {
+                    IconButton(onClick = onNavigateCreateTask) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Adicionar tarefa",
                             tint = Color(0xFF2E7D32),
                         )
                     }
-
-                    // Theme toggle
                     ThemeToggleButton(themeViewModel = themeViewModel)
-
-                    // Settings icon
                     IconButton(
                         onClick = { viewModel.handleIntent(KanbanIntent.SettingsClicked) },
                     ) {
@@ -149,10 +146,43 @@ fun KanbanScreen(
                     KanbanColumnCard(
                         column = column,
                         tasks = displayTasks[column.id].orEmpty(),
+                        onTaskClick = { task ->
+                            viewModel.handleIntent(KanbanIntent.TaskClicked(task))
+                        },
                     )
                 }
             }
         }
+    }
+
+    // --- Task Detail Bottom Sheet ---
+    val selectedTask = state.selectedTask
+    if (selectedTask != null) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val taskDetailVm = remember(selectedTask.id) {
+            TaskDetailViewModel(task = selectedTask, columns = state.columns)
+        }
+
+        TaskDetailSheet(
+            viewModel = taskDetailVm,
+            sheetState = sheetState,
+            onDismiss = {
+                viewModel.handleIntent(KanbanIntent.DismissTaskDetail)
+            },
+            onTaskUpdated = { updated ->
+                viewModel.handleIntent(
+                    KanbanIntent.TaskUpdated(
+                        taskId = updated.taskId,
+                        name = updated.name,
+                        priority = updated.priority,
+                        columnId = updated.columnId,
+                    ),
+                )
+            },
+            onTaskDeleted = { taskId ->
+                viewModel.handleIntent(KanbanIntent.TaskDeleted(taskId))
+            },
+        )
     }
 }
 
@@ -160,6 +190,7 @@ fun KanbanScreen(
 private fun KanbanColumnCard(
     column: KanbanColumn,
     tasks: List<KanbanTask>,
+    onTaskClick: (KanbanTask) -> Unit,
 ) {
     Card(
         modifier = Modifier.width(240.dp),
@@ -169,7 +200,6 @@ private fun KanbanColumnCard(
         ),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // --- Column header ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -190,17 +220,15 @@ private fun KanbanColumnCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // --- Tasks (scrollable within column) ---
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.weight(1f, fill = false),
             ) {
                 items(tasks, key = { it.id }) { task ->
-                    TaskCard(task = task)
+                    TaskCard(task = task, onClick = { onTaskClick(task) })
                 }
             }
 
-            // Espaço inferior para evitar sobreposição
             if (tasks.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -220,9 +248,9 @@ private fun KanbanColumnCard(
 }
 
 @Composable
-private fun TaskCard(task: KanbanTask) {
+private fun TaskCard(task: KanbanTask, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,

@@ -23,13 +23,14 @@ data class KanbanTask(
  *
  * Campos:
  *  - [boardId] — id do quadro ativo (null enquanto carrega)
- *  - [columns] — colunas visíveis (ex: "A Fazer", "Em Progresso", "Concluído")
+ *  - [columns] — colunas visíveis (ex: "Backlog", "A Fazer", "Em Progresso", "Concluído")
  *  - [tasksByColumn] — tasks agrupadas por columnId (fonte da verdade)
  *  - [searchQuery] — texto de busca do usuário
  *  - [filteredTasksByColumn] — tasks filtradas pela searchQuery (derivado)
  *  - [isLoading] — carregando do Supabase / SQLDelight
  *  - [error] — mensagem de erro a exibir
  *  - [isAddTaskDialogVisible] — controla o diálogo de criação
+ *  - [selectedTask] — task selecionada para exibir detalhes (null = nenhuma)
  */
 data class KanbanState(
     val boardId: String? = null,
@@ -40,4 +41,5 @@ data class KanbanState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val isAddTaskDialogVisible: Boolean = false,
+    val selectedTask: KanbanTask? = null,
 ) : UiState

@@ -178,7 +178,7 @@ class KanbanViewModelTest {
                         KanbanTask("t3", "col_progress", "Reunião com Pedro e Maria", 4),
                     ),
                     "col_done" to listOf(
-                        KanbanTask("t4", "col_done", "Finalizar relatório mensal", 1),
+                        KanbanTask("t4", "col_done", "Entregar relatório final", 1),
                     ),
                 ),
             ),

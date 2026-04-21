@@ -93,6 +93,56 @@ class KanbanViewModel : ViewModel(), MviViewModel<KanbanState, KanbanIntent, Kan
                 recomputeFiltered()
             }
 
+            is KanbanIntent.TaskClicked -> {
+                _state.value = _state.value.copy(selectedTask = intent.task)
+            }
+
+            is KanbanIntent.DismissTaskDetail -> {
+                _state.value = _state.value.copy(selectedTask = null)
+            }
+
+            is KanbanIntent.TaskUpdated -> {
+                val tasks = _state.value.tasksByColumn.toMutableMap()
+                // Remove from old column
+                for ((colId, taskList) in tasks) {
+                    val found = taskList.find { it.id == intent.taskId }
+                    if (found != null) {
+                        tasks[colId] = taskList.filter { it.id != intent.taskId }
+                        break
+                    }
+                }
+                // Add to target column with updated data
+                val updatedTask = KanbanTask(
+                    id = intent.taskId,
+                    columnId = intent.columnId,
+                    name = intent.name,
+                    priority = intent.priority,
+                )
+                val targetTasks = tasks[intent.columnId].orEmpty()
+                tasks[intent.columnId] = targetTasks + updatedTask
+                _state.value = _state.value.copy(
+                    tasksByColumn = tasks,
+                    selectedTask = null,
+                )
+                recomputeFiltered()
+            }
+
+            is KanbanIntent.TaskDeleted -> {
+                val tasks = _state.value.tasksByColumn.toMutableMap()
+                for ((colId, taskList) in tasks) {
+                    val found = taskList.find { it.id == intent.taskId }
+                    if (found != null) {
+                        tasks[colId] = taskList.filter { it.id != intent.taskId }
+                        break
+                    }
+                }
+                _state.value = _state.value.copy(
+                    tasksByColumn = tasks,
+                    selectedTask = null,
+                )
+                recomputeFiltered()
+            }
+
             is KanbanIntent.AddTestTasks -> {
                 _state.value = _state.value.copy(tasksByColumn = intent.tasks)
                 recomputeFiltered()
