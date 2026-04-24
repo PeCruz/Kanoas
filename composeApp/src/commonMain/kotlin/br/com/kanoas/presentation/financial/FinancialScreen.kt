@@ -42,6 +42,7 @@ import br.com.kanoas.shared.financial.domain.validation.BrlMonetaryFormatter
 fun FinancialScreen(
     viewModel: FinancialViewModel,
     themeViewModel: ThemeViewModel,
+    modifier: Modifier = Modifier,
     onAddTransactionDialog: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
@@ -60,6 +61,7 @@ fun FinancialScreen(
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 title = { Text("Financeiro") },
