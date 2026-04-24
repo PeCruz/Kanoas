@@ -73,6 +73,7 @@ import kotlin.math.roundToInt
 fun KanbanScreen(
     viewModel: KanbanViewModel,
     themeViewModel: ThemeViewModel,
+    modifier: Modifier = Modifier,
     onNavigateCreateTask: () -> Unit = {},
     onNavigateSettings: () -> Unit = {},
 ) {
@@ -97,6 +98,7 @@ fun KanbanScreen(
     }
 
     Scaffold(
+        modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(

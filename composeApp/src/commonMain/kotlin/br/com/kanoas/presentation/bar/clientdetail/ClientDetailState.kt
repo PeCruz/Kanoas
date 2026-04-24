@@ -1,0 +1,37 @@
+package br.com.kanoas.presentation.bar.clientdetail
+
+import br.com.kanoas.presentation.bar.BarItem
+import br.com.kanoas.shared.core.mvi.UiState
+
+/**
+ * State da tela de detalhe do cliente — lista de itens consumidos.
+ */
+data class ClientDetailState(
+    val clientId: String = "",
+    val clientName: String = "",
+    val clientNickname: String? = null,
+    val clientPhone: String = "",
+    val clientCpf: String = "",
+    val clientEmail: String? = null,
+    val items: List<BarItem> = emptyList(),
+    val isPaid: Boolean = false,
+    val totalCents: Long = 0L,
+    val isAddItemVisible: Boolean = false,
+    val newItemName: String = "",
+    val newItemPriceCents: Long? = null,
+    val newItemNameError: String? = null,
+    val newItemPriceError: String? = null,
+    val isDeleteConfirmVisible: Boolean = false,
+    val itemsPage: Int = 0,
+    val itemsPerPage: Int = 4,
+    val itemToDeleteId: String? = null,
+) : UiState {
+
+    /** Itens da página atual. */
+    val paginatedItems: List<BarItem>
+        get() = items.drop(itemsPage * itemsPerPage).take(itemsPerPage)
+
+    /** Total de páginas. */
+    val totalPages: Int
+        get() = if (items.isEmpty()) 1 else ((items.size - 1) / itemsPerPage) + 1
+}
