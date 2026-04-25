@@ -1,5 +1,5 @@
 # =============================================================================
-# Kanoas — Docker Compose (AI Jail: Isolamento & Governança)
+# Sprena — Docker Compose (AI Jail: Isolamento & Governança)
 # =============================================================================
 # AI Jail implementado via conteinerização:
 #   - Sem acesso à rede durante o build (network_mode: none)

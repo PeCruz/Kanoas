@@ -1,0 +1,34 @@
+package br.com.sprena.di
+
+import br.com.sprena.presentation.core.navigation.BottomNavViewModel
+import br.com.sprena.presentation.core.theme.ThemeViewModel
+import br.com.sprena.presentation.financial.FinancialViewModel
+import br.com.sprena.presentation.financial.addtransaction.AddTransactionViewModel
+import br.com.sprena.presentation.home.HomeViewModel
+import br.com.sprena.presentation.kanban.KanbanViewModel
+import br.com.sprena.presentation.kanban.addtask.AddTaskViewModel
+import br.com.sprena.presentation.kanban.createtask.CreateTaskViewModel
+import br.com.sprena.presentation.bar.BarViewModel
+import br.com.sprena.presentation.bar.addclient.AddClientViewModel
+import br.com.sprena.presentation.login.LoginViewModel
+import br.com.sprena.presentation.menu.MenuViewModel
+import br.com.sprena.presentation.sportclient.SportClientViewModel
+import org.koin.core.module.dsl.viewModel
+import org.koin.core.module.dsl.viewModelOf
+import org.koin.dsl.module
+
+fun appModule() = module {
+    viewModelOf(::HomeViewModel)
+    viewModelOf(::LoginViewModel)
+    viewModelOf(::KanbanViewModel)
+    viewModelOf(::AddTaskViewModel)
+    viewModel { CreateTaskViewModel() }
+    viewModelOf(::FinancialViewModel)
+    viewModelOf(::AddTransactionViewModel)
+    viewModelOf(::BottomNavViewModel)
+    viewModelOf(::ThemeViewModel)
+    viewModelOf(::BarViewModel)
+    viewModelOf(::AddClientViewModel)
+    viewModelOf(::MenuViewModel)
+    viewModelOf(::SportClientViewModel)
+}

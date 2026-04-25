@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.google.services)
 }
 
 kotlin {
@@ -52,6 +53,10 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.koin.android)
+
+            // Firebase (project.dependencies.platform() is required for BOM in KMP)
+            implementation(project.dependencies.platform(libs.firebase.bom))
+            implementation(libs.firebase.firestore)
         }
 
         commonTest.dependencies {
@@ -63,11 +68,11 @@ kotlin {
 }
 
 android {
-    namespace = "br.com.kanoas"
+    namespace = "br.com.sprena"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "br.com.kanoas"
+        applicationId = "br.com.sprena"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

@@ -1,0 +1,59 @@
+package br.com.sprena.shared.sportclient.data.dto
+
+import br.com.sprena.shared.sportclient.domain.model.SportClientModel
+import br.com.sprena.shared.sportclient.domain.validation.PaymentMethod
+import br.com.sprena.shared.sportclient.domain.validation.SportModality
+
+/**
+ * DTO para serialização de/para Firebase Firestore.
+ *
+ * Firestore armazena campos como Map<String, Any>.
+ * Este DTO faz a conversão bidirecional com [SportClientModel].
+ */
+data class SportClientDto(
+    val name: String = "",
+    val apelido: String = "",
+    val cpf: String = "",
+    val phone: String = "",
+    val modality: String = "",
+    val attendance: Int = 0,
+    val paymentMethod: String = "",
+    val cashAmountCents: Long = 0L,
+    val lastPaymentMonth: String = "",
+) {
+
+    /**
+     * Converte o DTO para o modelo de domínio.
+     *
+     * @param id O ID do documento Firestore.
+     */
+    fun toDomain(id: String): SportClientModel = SportClientModel(
+        id = id,
+        name = name,
+        apelido = apelido,
+        cpf = cpf,
+        phone = phone,
+        modality = SportModality.valueOf(modality.ifBlank { SportModality.FUTEVOLEI.name }),
+        attendance = attendance,
+        paymentMethod = PaymentMethod.valueOf(paymentMethod.ifBlank { PaymentMethod.CASH.name }),
+        cashAmountCents = cashAmountCents,
+        lastPaymentMonth = lastPaymentMonth,
+    )
+
+    companion object {
+        /**
+         * Converte o modelo de domínio para DTO.
+         */
+        fun fromDomain(model: SportClientModel): SportClientDto = SportClientDto(
+            name = model.name,
+            apelido = model.apelido,
+            cpf = model.cpf,
+            phone = model.phone,
+            modality = model.modality.name,
+            attendance = model.attendance,
+            paymentMethod = model.paymentMethod.name,
+            cashAmountCents = model.cashAmountCents,
+            lastPaymentMonth = model.lastPaymentMonth,
+        )
+    }
+}

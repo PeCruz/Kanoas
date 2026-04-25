@@ -1,5 +1,5 @@
 # =============================================================================
-# Kanoas — Android Build Container (AI Jail: Isolamento)
+# Sprena — Android Build Container (AI Jail: Isolamento)
 # =============================================================================
 # Container isolado para builds Android reproduzíveis e seguros.
 # Nenhuma dependência do host é necessária além do Docker.

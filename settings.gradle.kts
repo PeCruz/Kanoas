@@ -1,4 +1,4 @@
-rootProject.name = "Kanoas"
+rootProject.name = "Sprena"
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
