@@ -15,6 +15,38 @@ import kotlin.test.assertTrue
  */
 class TransactionValidatorTest {
 
+    // ── Name — obrigatório, máx 50 ──────────────────────
+
+    @Test
+    fun `name empty is invalid`() {
+        val result = TransactionValidator.validateName("")
+        assertFalse(result.isValid)
+        assertNotNull(result.errorMessage)
+    }
+
+    @Test
+    fun `name blank spaces is invalid`() {
+        assertFalse(TransactionValidator.validateName("   ").isValid)
+    }
+
+    @Test
+    fun `name with 50 chars at boundary is valid`() {
+        val atMax = "a".repeat(TransactionValidator.NAME_MAX_LENGTH)
+        assertTrue(TransactionValidator.validateName(atMax).isValid)
+        assertNull(TransactionValidator.validateName(atMax).errorMessage)
+    }
+
+    @Test
+    fun `name with 51 chars above max is invalid`() {
+        val overMax = "a".repeat(TransactionValidator.NAME_MAX_LENGTH + 1)
+        assertFalse(TransactionValidator.validateName(overMax).isValid)
+    }
+
+    @Test
+    fun `name with valid content is valid`() {
+        assertTrue(TransactionValidator.validateName("Compra mensal").isValid)
+    }
+
     // ── PersonName — obrigatório, máx 50 ─────────────────
 
     @Test

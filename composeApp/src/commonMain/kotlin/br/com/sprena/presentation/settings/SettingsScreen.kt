@@ -25,6 +25,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import br.com.sprena.core.ui.components.ThemeToggleButton
 import br.com.sprena.presentation.core.theme.ThemeViewModel
@@ -43,6 +44,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     onNavigateBack: (() -> Unit)? = null,
     onNavigateMenu: () -> Unit = {},
+    onNavigateCategory: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier,
@@ -73,7 +75,9 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            // --- Cardápio ---
+            // ── Section: Comandas ──
+            SectionTitle(title = "Comandas")
+
             SettingsItem(
                 icon = {
                     Icon(
@@ -88,16 +92,37 @@ fun SettingsScreen(
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = "Mais configurações em breve...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp),
+            // ── Section: Financeiro ──
+            SectionTitle(title = "Financeiro")
+
+            SettingsItem(
+                icon = {
+                    Text(
+                        text = "R$",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                },
+                title = "Categorias",
+                subtitle = "Gerenciar categorias de transações",
+                onClick = onNavigateCategory,
             )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
+}
+
+@Composable
+private fun SectionTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+    )
 }
 
 @Composable

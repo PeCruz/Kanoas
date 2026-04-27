@@ -11,6 +11,7 @@ import br.com.sprena.presentation.kanban.createtask.CreateTaskViewModel
 import br.com.sprena.presentation.bar.BarViewModel
 import br.com.sprena.presentation.bar.addclient.AddClientViewModel
 import br.com.sprena.presentation.login.LoginViewModel
+import br.com.sprena.presentation.category.CategoryViewModel
 import br.com.sprena.presentation.menu.MenuViewModel
 import br.com.sprena.presentation.sportclient.SportClientViewModel
 import org.koin.core.module.dsl.viewModel
@@ -23,12 +24,13 @@ fun appModule() = module {
     viewModelOf(::KanbanViewModel)
     viewModelOf(::AddTaskViewModel)
     viewModel { CreateTaskViewModel() }
-    viewModelOf(::FinancialViewModel)
-    viewModelOf(::AddTransactionViewModel)
+    viewModel { FinancialViewModel() }
+    viewModel { AddTransactionViewModel() }
     viewModelOf(::BottomNavViewModel)
     viewModelOf(::ThemeViewModel)
     viewModelOf(::BarViewModel)
     viewModelOf(::AddClientViewModel)
     viewModelOf(::MenuViewModel)
+    viewModelOf(::CategoryViewModel)
     viewModelOf(::SportClientViewModel)
 }

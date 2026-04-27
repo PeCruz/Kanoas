@@ -1,6 +1,7 @@
 package br.com.sprena.presentation.financial.addtransaction
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +19,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -30,30 +32,76 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import br.com.sprena.presentation.financial.FinancialTransactionSummary
 import br.com.sprena.presentation.financial.TransactionType
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.foundation.clickable
+
+/**
+ * Visual transformation that formats raw digit input as BRL currency.
+ * E.g. "12345" → "R$ 123,45", "1" → "R$ 0,01", "" → "R$ 0,00"
+ */
+internal class BrlVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val digits = text.text
+        val cents = digits.toLongOrNull() ?: 0L
+        val formatted = formatCentsForMask(cents)
+
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int = formatted.length
+            override fun transformedToOriginal(offset: Int): Int = digits.length
+        }
+        return TransformedText(AnnotatedString(formatted), offsetMapping)
+    }
+
+    private fun formatCentsForMask(cents: Long): String {
+        val reais = cents / 100
+        val centavos = (cents % 100).let { if (it < 0) -it else it }
+        val reaisStr = reais.toString()
+            .reversed()
+            .chunked(3)
+            .joinToString(".")
+            .reversed()
+        return "R$ $reaisStr,${centavos.toString().padStart(2, '0')}"
+    }
+}
 
 /**
  * Diálogo para adicionar uma nova transação financeira.
  *
- * Campos: Amount (BRL), Person Name, Type (Income/Expense),
+ * Campos: Nome, Amount (BRL), Person Name, Type (Income/Expense),
  * Category (dropdown), Description.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTransactionDialog(
     viewModel: AddTransactionViewModel,
+    categories: List<String> = emptyList(),
+    isEditMode: Boolean = false,
     onDismiss: () -> Unit,
-    onTransactionCreated: () -> Unit,
+    onTransactionCreated: (FinancialTransactionSummary) -> Unit,
+    onTransactionUpdated: (FinancialTransactionSummary) -> Unit = {},
+    onTransactionDeleted: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is AddTransactionEffect.TransactionCreated -> onTransactionCreated()
+                is AddTransactionEffect.TransactionCreated -> onTransactionCreated(effect.transaction)
+                is AddTransactionEffect.TransactionUpdated -> onTransactionUpdated(effect.transaction)
                 is AddTransactionEffect.Dismissed -> onDismiss()
                 is AddTransactionEffect.ShowError -> { /* handled inline */ }
             }
@@ -73,7 +121,7 @@ fun AddTransactionDialog(
                     .verticalScroll(rememberScrollState()),
             ) {
                 Text(
-                    text = "Nova Transação",
+                    text = if (isEditMode) "Editar Transação" else "Nova Transação",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
@@ -92,7 +140,17 @@ fun AddTransactionDialog(
                                 AddTransactionIntent.TypeChanged(TransactionType.INCOME),
                             )
                         },
-                        label = { Text("Entrada") },
+                        label = {
+                            Text(
+                                "Entrada",
+                                fontWeight = if (state.type == TransactionType.INCOME)
+                                    FontWeight.Bold else FontWeight.Normal,
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFF2E7D32),
+                            selectedLabelColor = Color.White,
+                        ),
                     )
                     FilterChip(
                         selected = state.type == TransactionType.EXPENSE,
@@ -101,20 +159,50 @@ fun AddTransactionDialog(
                                 AddTransactionIntent.TypeChanged(TransactionType.EXPENSE),
                             )
                         },
-                        label = { Text("Saída") },
+                        label = {
+                            Text(
+                                "Saída",
+                                fontWeight = if (state.type == TransactionType.EXPENSE)
+                                    FontWeight.Bold else FontWeight.Normal,
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFFC62828),
+                            selectedLabelColor = Color.White,
+                        ),
                     )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // --- Amount (BRL) ---
+                // --- Nome (required, max 50) ---
+                OutlinedTextField(
+                    value = state.name,
+                    onValueChange = {
+                        if (it.length <= 50) {
+                            viewModel.handleIntent(AddTransactionIntent.NameChanged(it))
+                        }
+                    },
+                    label = { Text("Nome *") },
+                    singleLine = true,
+                    isError = state.nameError != null,
+                    supportingText = state.nameError?.let { e -> { Text(e) } },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // --- Amount (BRL) with live mask ---
                 OutlinedTextField(
                     value = state.amountRaw,
-                    onValueChange = {
-                        viewModel.handleIntent(AddTransactionIntent.AmountChanged(it))
+                    onValueChange = { raw ->
+                        val digits = raw.filter { it.isDigit() }
+                        viewModel.handleIntent(AddTransactionIntent.AmountChanged(digits))
                     },
                     label = { Text("Valor (R$) *") },
                     singleLine = true,
+                    visualTransformation = remember { BrlVisualTransformation() },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     isError = state.amountError != null,
                     supportingText = state.amountError?.let { e -> { Text(e) } },
                     modifier = Modifier.fillMaxWidth(),
@@ -139,10 +227,6 @@ fun AddTransactionDialog(
 
                 // --- Category Dropdown ---
                 var categoryExpanded by remember { mutableStateOf(false) }
-                val categories = listOf(
-                    "Salário", "Vendas", "Mercado", "Transporte",
-                    "Serviços", "Material", "Outros",
-                )
 
                 ExposedDropdownMenuBox(
                     expanded = categoryExpanded,
@@ -192,24 +276,170 @@ fun AddTransactionDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // --- Date Granularity chips ---
+                Text(
+                    text = "Data *",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = state.dateGranularity == DateGranularity.DAY,
+                        onClick = {
+                            viewModel.handleIntent(
+                                AddTransactionIntent.DateGranularityChanged(DateGranularity.DAY),
+                            )
+                        },
+                        label = { Text("Dia") },
+                    )
+                    FilterChip(
+                        selected = state.dateGranularity == DateGranularity.MONTH,
+                        onClick = {
+                            viewModel.handleIntent(
+                                AddTransactionIntent.DateGranularityChanged(DateGranularity.MONTH),
+                            )
+                        },
+                        label = { Text("Mês") },
+                    )
+                    FilterChip(
+                        selected = state.dateGranularity == DateGranularity.YEAR,
+                        onClick = {
+                            viewModel.handleIntent(
+                                AddTransactionIntent.DateGranularityChanged(DateGranularity.YEAR),
+                            )
+                        },
+                        label = { Text("Ano") },
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // --- Date field (read-only, opens picker) ---
+                var showDatePicker by remember { mutableStateOf(false) }
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = state.dateDisplay,
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        label = {
+                            Text(
+                                when (state.dateGranularity) {
+                                    DateGranularity.DAY -> "DD/MM/AAAA"
+                                    DateGranularity.MONTH -> "MM/AAAA"
+                                    DateGranularity.YEAR -> "AAAA"
+                                },
+                            )
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    // Transparent overlay to capture clicks (OutlinedTextField
+                    // with enabled=false ignores touch, so this Box receives it)
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable { showDatePicker = true },
+                    )
+                }
+
+                if (state.dateError != null) {
+                    Text(
+                        text = state.dateError!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+                    )
+                }
+
+                // --- Date Picker Dialog ---
+                if (showDatePicker) {
+                    DatePickerDialog(
+                        onDismissRequest = { showDatePicker = false },
+                        confirmButton = {
+                            // Handled inside picker composable below
+                        },
+                    ) {
+                        val datePickerState = rememberDatePickerState()
+                        DatePicker(state = datePickerState)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                            horizontalArrangement = Arrangement.End,
+                        ) {
+                            TextButton(onClick = { showDatePicker = false }) {
+                                Text("Cancelar")
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    datePickerState.selectedDateMillis?.let { millis ->
+                                        viewModel.handleIntent(
+                                            AddTransactionIntent.DatePickerConfirmed(millis),
+                                        )
+                                    }
+                                    showDatePicker = false
+                                },
+                            ) {
+                                Text("OK")
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // --- Actions ---
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    TextButton(
-                        onClick = { viewModel.handleIntent(AddTransactionIntent.Dismiss) },
+                if (isEditMode) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text("Cancelar")
+                        TextButton(
+                            onClick = onTransactionDeleted,
+                            colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                                contentColor = Color(0xFFE53935),
+                            ),
+                        ) {
+                            Text("Excluir")
+                        }
+                        Row {
+                            TextButton(
+                                onClick = { viewModel.handleIntent(AddTransactionIntent.Dismiss) },
+                            ) {
+                                Text("Cancelar")
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = { viewModel.handleIntent(AddTransactionIntent.Submit) },
+                                enabled = state.canSubmit,
+                            ) {
+                                Text("Salvar")
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = { viewModel.handleIntent(AddTransactionIntent.Submit) },
-                        enabled = state.canSubmit,
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
                     ) {
-                        Text("Adicionar")
+                        TextButton(
+                            onClick = { viewModel.handleIntent(AddTransactionIntent.Dismiss) },
+                        ) {
+                            Text("Cancelar")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = { viewModel.handleIntent(AddTransactionIntent.Submit) },
+                            enabled = state.canSubmit,
+                        ) {
+                            Text("Adicionar")
+                        }
                     }
                 }
             }

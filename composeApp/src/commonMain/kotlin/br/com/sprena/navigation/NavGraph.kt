@@ -46,6 +46,8 @@ import br.com.sprena.presentation.kanban.createtask.CreateTaskScreen
 import br.com.sprena.presentation.kanban.createtask.CreateTaskViewModel
 import br.com.sprena.presentation.login.LoginScreen
 import br.com.sprena.presentation.login.LoginViewModel
+import br.com.sprena.presentation.category.CategoryScreen
+import br.com.sprena.presentation.category.CategoryViewModel
 import br.com.sprena.presentation.menu.MenuItem
 import br.com.sprena.presentation.menu.MenuScreen
 import br.com.sprena.presentation.menu.MenuViewModel
@@ -63,6 +65,7 @@ object Routes {
     const val CREATE_TASK = "create_task"
     const val SETTINGS = "settings"
     const val MENU = "menu"
+    const val CATEGORY = "category"
 }
 
 /**
@@ -74,6 +77,8 @@ fun NavGraph(themeViewModel: ThemeViewModel) {
     val navController = rememberNavController()
     // MenuViewModel shared between Cardápio (Settings) and Comandas (Bar → Itens Consumidos)
     val menuViewModel: MenuViewModel = koinViewModel()
+    // CategoryViewModel shared between Settings (manage) and Financial (AddTransaction dropdown)
+    val categoryViewModel: CategoryViewModel = koinViewModel()
 
     NavHost(
         navController = navController,
@@ -102,6 +107,7 @@ fun NavGraph(themeViewModel: ThemeViewModel) {
                 navController = navController,
                 themeViewModel = themeViewModel,
                 menuViewModel = menuViewModel,
+                categoryViewModel = categoryViewModel,
                 createdTaskName = createdName,
                 createdTaskPriority = createdPriority,
                 onTaskConsumed = {
@@ -145,12 +151,22 @@ fun NavGraph(themeViewModel: ThemeViewModel) {
             SettingsScreen(
                 themeViewModel = themeViewModel,
                 onNavigateBack = { navController.popBackStack() },
+                onNavigateMenu = { navController.navigate(Routes.MENU) },
+                onNavigateCategory = { navController.navigate(Routes.CATEGORY) },
             )
         }
 
         composable(route = Routes.MENU) {
             MenuScreen(
                 viewModel = menuViewModel,
+                themeViewModel = themeViewModel,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(route = Routes.CATEGORY) {
+            CategoryScreen(
+                viewModel = categoryViewModel,
                 themeViewModel = themeViewModel,
                 onNavigateBack = { navController.popBackStack() },
             )
@@ -167,6 +183,7 @@ private fun HomeWithBottomNav(
     navController: NavHostController,
     themeViewModel: ThemeViewModel,
     menuViewModel: MenuViewModel,
+    categoryViewModel: CategoryViewModel,
     createdTaskName: String? = null,
     createdTaskPriority: Int? = null,
     onTaskConsumed: () -> Unit = {},
@@ -200,6 +217,9 @@ private fun HomeWithBottomNav(
 
     // Menu items (shared with Cardápio)
     val menuState by menuViewModel.state.collectAsState()
+
+    // Categories (shared with Financial)
+    val categoryState by categoryViewModel.state.collectAsState()
 
     Scaffold(
         bottomBar = {
@@ -325,6 +345,9 @@ private fun HomeWithBottomNav(
                     onNavigateMenu = {
                         navController.navigate(Routes.MENU)
                     },
+                    onNavigateCategory = {
+                        navController.navigate(Routes.CATEGORY)
+                    },
                 )
             }
         }
@@ -332,22 +355,61 @@ private fun HomeWithBottomNav(
 
     // --- Dialogs ---
 
-    // AddTransaction Dialog
+    // AddTransaction Dialog — fresh VM each time (no Koin cache)
     if (financialState.isAddDialogVisible) {
-        val addTransactionViewModel: AddTransactionViewModel = koinViewModel()
+        val addTransactionViewModel = remember { AddTransactionViewModel() }
         AddTransactionDialog(
             viewModel = addTransactionViewModel,
+            categories = categoryState.categories,
             onDismiss = {
                 financialViewModel.handleIntent(
                     br.com.sprena.presentation.financial.FinancialIntent.DismissAddDialog,
                 )
             },
-            onTransactionCreated = {
+            onTransactionCreated = { transaction ->
                 financialViewModel.handleIntent(
-                    br.com.sprena.presentation.financial.FinancialIntent.DismissAddDialog,
+                    br.com.sprena.presentation.financial.FinancialIntent.TransactionAdded(transaction),
                 )
             },
         )
+    }
+
+    // EditTransaction Dialog — fresh VM pre-filled with existing data
+    if (financialState.isEditDialogVisible && financialState.editingTransactionId != null) {
+        val editingTx = financialState.transactions.find {
+            it.id == financialState.editingTransactionId
+        }
+        if (editingTx != null) {
+            val editTransactionViewModel = remember(editingTx.id) {
+                AddTransactionViewModel()
+            }
+            LaunchedEffect(editingTx.id) {
+                editTransactionViewModel.handleIntent(
+                    br.com.sprena.presentation.financial.addtransaction.AddTransactionIntent.LoadForEdit(editingTx),
+                )
+            }
+            AddTransactionDialog(
+                viewModel = editTransactionViewModel,
+                categories = categoryState.categories,
+                isEditMode = true,
+                onDismiss = {
+                    financialViewModel.handleIntent(
+                        br.com.sprena.presentation.financial.FinancialIntent.DismissEditDialog,
+                    )
+                },
+                onTransactionCreated = { /* not used in edit mode */ },
+                onTransactionUpdated = { transaction ->
+                    financialViewModel.handleIntent(
+                        br.com.sprena.presentation.financial.FinancialIntent.TransactionUpdated(transaction),
+                    )
+                },
+                onTransactionDeleted = {
+                    financialViewModel.handleIntent(
+                        br.com.sprena.presentation.financial.FinancialIntent.TransactionDeleted(editingTx.id),
+                    )
+                },
+            )
+        }
     }
 
     // AddClient Dialog — cria VM novo cada vez que o diálogo abre (sem cache)
