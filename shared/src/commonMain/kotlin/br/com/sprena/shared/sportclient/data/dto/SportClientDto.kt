@@ -15,7 +15,7 @@ data class SportClientDto(
     val apelido: String = "",
     val cpf: String = "",
     val phone: String = "",
-    val modality: String = "",
+    val modalities: List<String> = emptyList(),
     val attendance: Int = 0,
     val paymentMethod: String = "",
     val cashAmountCents: Long = 0L,
@@ -33,7 +33,9 @@ data class SportClientDto(
         apelido = apelido,
         cpf = cpf,
         phone = phone,
-        modality = SportModality.valueOf(modality.ifBlank { SportModality.FUTEVOLEI.name }),
+        modalities = modalities.mapNotNull { name ->
+            runCatching { SportModality.valueOf(name) }.getOrNull()
+        }.ifEmpty { listOf(SportModality.FUTEVOLEI) },
         attendance = attendance,
         paymentMethod = PaymentMethod.valueOf(paymentMethod.ifBlank { PaymentMethod.CASH.name }),
         cashAmountCents = cashAmountCents,
@@ -49,7 +51,7 @@ data class SportClientDto(
             apelido = model.apelido,
             cpf = model.cpf,
             phone = model.phone,
-            modality = model.modality.name,
+            modalities = model.modalities.map { it.name },
             attendance = model.attendance,
             paymentMethod = model.paymentMethod.name,
             cashAmountCents = model.cashAmountCents,

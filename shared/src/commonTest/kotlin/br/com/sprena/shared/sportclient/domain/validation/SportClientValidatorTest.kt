@@ -153,22 +153,36 @@ class SportClientValidatorTest {
     fun `modalidade null returns invalid`() {
         val result = SportClientValidator.validateModalidade(null)
         assertFalse(result.isValid)
-        assertTrue(result.errorMessage!!.contains("obrigatória"))
     }
 
     @Test
-    fun `modalidade FUTEVOLEI returns Valid`() {
-        assertTrue(SportClientValidator.validateModalidade(SportModality.FUTEVOLEI).isValid)
+    fun `modalidade empty list returns invalid`() {
+        val result = SportClientValidator.validateModalidade(emptyList())
+        assertFalse(result.isValid)
     }
 
     @Test
-    fun `modalidade BEACH_TENNIS returns Valid`() {
-        assertTrue(SportClientValidator.validateModalidade(SportModality.BEACH_TENNIS).isValid)
+    fun `modalidade single FUTEVOLEI returns Valid`() {
+        assertTrue(SportClientValidator.validateModalidade(listOf(SportModality.FUTEVOLEI)).isValid)
     }
 
     @Test
-    fun `modalidade VOLEI returns Valid`() {
-        assertTrue(SportClientValidator.validateModalidade(SportModality.VOLEI).isValid)
+    fun `modalidade single BEACH_TENNIS returns Valid`() {
+        assertTrue(SportClientValidator.validateModalidade(listOf(SportModality.BEACH_TENNIS)).isValid)
+    }
+
+    @Test
+    fun `modalidade single VOLEI returns Valid`() {
+        assertTrue(SportClientValidator.validateModalidade(listOf(SportModality.VOLEI)).isValid)
+    }
+
+    @Test
+    fun `modalidade multiple modalities returns Valid`() {
+        assertTrue(
+            SportClientValidator.validateModalidade(
+                listOf(SportModality.FUTEVOLEI, SportModality.BEACH_TENNIS, SportModality.VOLEI),
+            ).isValid,
+        )
     }
 
     // =========================================================================

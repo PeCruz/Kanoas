@@ -13,7 +13,7 @@ import kotlin.test.assertNotEquals
 /**
  * TDD — BottomNavViewModel (barra de navegação inferior).
  *
- * Ordem das abas: HOME, QUADRO, BAR, FINANCIAL, SETTINGS
+ * Ordem das abas: HOME, EVENTOS, BAR, FINANCIAL, SETTINGS
  *
  * Cenários cobertos:
  * - Tab inicial é HOME
@@ -38,9 +38,9 @@ class BottomNavViewModelTest {
     }
 
     @Test
-    fun `initial tab is not QUADRO`() = runTest {
+    fun `initial tab is not EVENTOS`() = runTest {
         val vm = BottomNavViewModel()
-        assertNotEquals(BottomTab.QUADRO, vm.state.first().current)
+        assertNotEquals(BottomTab.EVENTOS, vm.state.first().current)
     }
 
     // =========================================================================
@@ -50,7 +50,7 @@ class BottomNavViewModelTest {
     @Test
     fun `selecting HOME tab updates state`() = runTest {
         val vm = BottomNavViewModel()
-        vm.handleIntent(BottomNavIntent.TabSelected(BottomTab.QUADRO))
+        vm.handleIntent(BottomNavIntent.TabSelected(BottomTab.EVENTOS))
         vm.handleIntent(BottomNavIntent.TabSelected(BottomTab.HOME))
         assertEquals(BottomTab.HOME, vm.state.first().current)
     }
@@ -58,7 +58,7 @@ class BottomNavViewModelTest {
     @Test
     fun `selecting HOME tab emits NavigateTo effect`() = runTest {
         val vm = BottomNavViewModel()
-        vm.handleIntent(BottomNavIntent.TabSelected(BottomTab.QUADRO))
+        vm.handleIntent(BottomNavIntent.TabSelected(BottomTab.EVENTOS))
         vm.effects.test {
             vm.handleIntent(BottomNavIntent.TabSelected(BottomTab.HOME))
             assertEquals(BottomNavEffect.NavigateTo(BottomTab.HOME), awaitItem())
@@ -67,22 +67,22 @@ class BottomNavViewModelTest {
     }
 
     // =========================================================================
-    // QUADRO tab (antigo KANBAN)
+    // EVENTOS tab (antigo KANBAN)
     // =========================================================================
 
     @Test
-    fun `selecting QUADRO tab updates state`() = runTest {
+    fun `selecting EVENTOS tab updates state`() = runTest {
         val vm = BottomNavViewModel()
-        vm.handleIntent(BottomNavIntent.TabSelected(BottomTab.QUADRO))
-        assertEquals(BottomTab.QUADRO, vm.state.first().current)
+        vm.handleIntent(BottomNavIntent.TabSelected(BottomTab.EVENTOS))
+        assertEquals(BottomTab.EVENTOS, vm.state.first().current)
     }
 
     @Test
-    fun `selecting QUADRO tab emits NavigateTo effect`() = runTest {
+    fun `selecting EVENTOS tab emits NavigateTo effect`() = runTest {
         val vm = BottomNavViewModel()
         vm.effects.test {
-            vm.handleIntent(BottomNavIntent.TabSelected(BottomTab.QUADRO))
-            assertEquals(BottomNavEffect.NavigateTo(BottomTab.QUADRO), awaitItem())
+            vm.handleIntent(BottomNavIntent.TabSelected(BottomTab.EVENTOS))
+            assertEquals(BottomNavEffect.NavigateTo(BottomTab.EVENTOS), awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -153,9 +153,9 @@ class BottomNavViewModelTest {
     }
 
     @Test
-    fun `selecting HOME after QUADRO reverts state`() = runTest {
+    fun `selecting HOME after EVENTOS reverts state`() = runTest {
         val vm = BottomNavViewModel()
-        vm.handleIntent(BottomNavIntent.TabSelected(BottomTab.QUADRO))
+        vm.handleIntent(BottomNavIntent.TabSelected(BottomTab.EVENTOS))
         vm.handleIntent(BottomNavIntent.TabSelected(BottomTab.HOME))
         assertEquals(BottomTab.HOME, vm.state.first().current)
     }
@@ -165,7 +165,7 @@ class BottomNavViewModelTest {
         val vm = BottomNavViewModel()
         val tabs = listOf(
             BottomTab.HOME,
-            BottomTab.QUADRO,
+            BottomTab.EVENTOS,
             BottomTab.BAR,
             BottomTab.FINANCIAL,
             BottomTab.SETTINGS,

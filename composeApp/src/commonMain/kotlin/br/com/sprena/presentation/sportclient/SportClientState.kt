@@ -16,7 +16,7 @@ data class SportClient(
     val apelido: String = "",
     val cpf: String,
     val phone: String,
-    val modality: SportModality,
+    val modalities: List<SportModality>,
     val attendance: Int,
     val paymentMethod: PaymentMethod,
     val cashAmountCents: Long,

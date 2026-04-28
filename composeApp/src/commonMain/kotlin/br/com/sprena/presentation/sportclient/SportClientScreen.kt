@@ -20,7 +20,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -37,9 +40,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,18 +54,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import br.com.sprena.core.ui.components.ThemeToggleButton
 import br.com.sprena.core.ui.mask.CpfMaskTransformation
 import br.com.sprena.core.ui.mask.CurrencyMaskTransformation
-import br.com.sprena.core.ui.mask.MonthYearMaskTransformation
 import br.com.sprena.core.ui.mask.PhoneMaskTransformation
 import br.com.sprena.core.ui.mask.centsToDigitString
 import br.com.sprena.core.ui.mask.filterDigitsOnly
-import br.com.sprena.core.ui.mask.formatMonthYearDigits
 import br.com.sprena.core.ui.mask.parseCurrencyDigits
 import br.com.sprena.presentation.core.theme.ThemeViewModel
+import br.com.sprena.presentation.financial.currentYearMonth
 import br.com.sprena.shared.sportclient.domain.validation.PaymentMethod
 import br.com.sprena.shared.sportclient.domain.validation.SportClientValidator
 import br.com.sprena.shared.sportclient.domain.validation.SportModality
@@ -209,7 +216,7 @@ private fun SportClientTableHeader() {
             text = "Nome",
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1.2f),
+            modifier = Modifier.weight(0.9f),
         )
         Text(
             text = "Apelido",
@@ -230,7 +237,7 @@ private fun SportClientTableHeader() {
             modifier = Modifier.weight(0.6f),
         )
         Text(
-            text = "Pagamento",
+            text = "Pgto",
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1.1f),
@@ -262,7 +269,7 @@ private fun SportClientTableRow(
             fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1.2f),
+            modifier = Modifier.weight(0.9f),
         )
         Text(
             text = client.apelido,
@@ -272,7 +279,7 @@ private fun SportClientTableRow(
             modifier = Modifier.weight(1f),
         )
         Text(
-            text = modalityLabel(client.modality),
+            text = modalitiesLabel(client.modalities),
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -314,6 +321,9 @@ private fun modalityLabel(modality: SportModality): String = when (modality) {
     SportModality.VOLEI -> "Vôlei"
 }
 
+private fun modalitiesLabel(modalities: List<SportModality>): String =
+    modalities.joinToString(", ") { modalityLabel(it) }
+
 // =========================================================================
 // Shared form fields composable
 // =========================================================================
@@ -332,8 +342,8 @@ private fun SportClientFormFields(
     phoneDigits: String,
     onPhoneChange: (String) -> Unit,
     phoneError: String?,
-    selectedModality: SportModality?,
-    onModalityChange: (SportModality) -> Unit,
+    selectedModalities: Set<SportModality>,
+    onModalityToggle: (SportModality) -> Unit,
     modalityError: String?,
     selectedAttendance: Int?,
     onAttendanceChange: (Int) -> Unit,
@@ -344,8 +354,8 @@ private fun SportClientFormFields(
     cashDigits: String,
     onCashChange: (String) -> Unit,
     cashError: String?,
-    lastPaymentMonth: String,
-    onLastPaymentMonthChange: (String) -> Unit,
+    lastPaymentMonthDisplay: String,
+    onLastPaymentMonthClick: () -> Unit,
     lastPaymentMonthError: String?,
 ) {
     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -422,8 +432,8 @@ private fun SportClientFormFields(
         ) {
             SportModality.entries.forEach { modality ->
                 FilterChip(
-                    selected = selectedModality == modality,
-                    onClick = { onModalityChange(modality) },
+                    selected = modality in selectedModalities,
+                    onClick = { onModalityToggle(modality) },
                     label = { Text(modalityLabel(modality)) },
                 )
             }
@@ -521,18 +531,120 @@ private fun SportClientFormFields(
 
         // --- Mês Pagamento ---
         OutlinedTextField(
-            value = lastPaymentMonth,
-            onValueChange = onLastPaymentMonthChange,
+            value = lastPaymentMonthDisplay,
+            onValueChange = {},
             label = { Text("Mês Pagamento *") },
             placeholder = { Text("MM/AAAA") },
+            readOnly = true,
             isError = lastPaymentMonthError != null,
             supportingText = lastPaymentMonthError?.let { e -> { Text(e) } },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            visualTransformation = MonthYearMaskTransformation(),
-            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Selecionar mês",
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onLastPaymentMonthClick() },
+            interactionSource = remember { MutableInteractionSource() }.also { source ->
+                LaunchedEffect(source) {
+                    source.interactions.collect { interaction ->
+                        if (interaction is PressInteraction.Release) {
+                            onLastPaymentMonthClick()
+                        }
+                    }
+                }
+            },
         )
     }
+}
+
+// =========================================================================
+// Month/Year Picker Dialog
+// =========================================================================
+
+private val MONTH_NAMES = listOf(
+    "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+    "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+)
+
+@Composable
+private fun MonthYearPickerDialog(
+    initialMonth: Int,
+    initialYear: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (month: Int, year: Int) -> Unit,
+) {
+    var selectedMonth by remember { mutableIntStateOf(initialMonth) }
+    var selectedYear by remember { mutableIntStateOf(initialYear) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Selecionar Mês/Ano") },
+        text = {
+            Column {
+                // Year navigation
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = { selectedYear-- }) {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Ano anterior")
+                    }
+                    Text(
+                        text = "$selectedYear",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                    IconButton(onClick = { selectedYear++ }) {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Próximo ano")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Month grid (3 columns x 4 rows)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (row in 0..3) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            for (col in 0..2) {
+                                val monthIndex = row * 3 + col
+                                val monthNumber = monthIndex + 1
+                                FilterChip(
+                                    selected = selectedMonth == monthNumber,
+                                    onClick = { selectedMonth = monthNumber },
+                                    label = {
+                                        Text(
+                                            text = MONTH_NAMES[monthIndex],
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textAlign = TextAlign.Center,
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selectedMonth, selectedYear) }) {
+                Text("Confirmar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        },
+    )
 }
 
 // =========================================================================
@@ -548,11 +660,12 @@ private fun AddSportClientDialog(
     var apelido by remember { mutableStateOf("") }
     var cpfDigits by remember { mutableStateOf("") }
     var phoneDigits by remember { mutableStateOf("") }
-    var selectedModality by remember { mutableStateOf<SportModality?>(null) }
+    var selectedModalities by remember { mutableStateOf<Set<SportModality>>(emptySet()) }
     var selectedAttendance by remember { mutableStateOf<Int?>(null) }
     var selectedPayment by remember { mutableStateOf<PaymentMethod?>(null) }
     var cashDigits by remember { mutableStateOf("0") }
-    var lastPaymentMonthDigits by remember { mutableStateOf("") }
+    var lastPaymentMonth by remember { mutableStateOf("") }
+    var showMonthPicker by remember { mutableStateOf(false) }
 
     var nameError by remember { mutableStateOf<String?>(null) }
     var apelidoError by remember { mutableStateOf<String?>(null) }
@@ -563,6 +676,30 @@ private fun AddSportClientDialog(
     var paymentError by remember { mutableStateOf<String?>(null) }
     var cashError by remember { mutableStateOf<String?>(null) }
     var lastPaymentMonthError by remember { mutableStateOf<String?>(null) }
+
+    if (showMonthPicker) {
+        val (defaultYear, defaultMonth) = currentYearMonth()
+        val initMonth = if (lastPaymentMonth.isNotBlank()) {
+            lastPaymentMonth.substringBefore("/").toIntOrNull() ?: defaultMonth
+        } else {
+            defaultMonth
+        }
+        val initYear = if (lastPaymentMonth.isNotBlank()) {
+            lastPaymentMonth.substringAfter("/").toIntOrNull() ?: defaultYear
+        } else {
+            defaultYear
+        }
+        MonthYearPickerDialog(
+            initialMonth = initMonth,
+            initialYear = initYear,
+            onDismiss = { showMonthPicker = false },
+            onConfirm = { month, year ->
+                lastPaymentMonth = "${month.toString().padStart(2, '0')}/${year.toString().padStart(4, '0')}"
+                lastPaymentMonthError = null
+                showMonthPicker = false
+            },
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -581,8 +718,15 @@ private fun AddSportClientDialog(
                 phoneDigits = phoneDigits,
                 onPhoneChange = { phoneDigits = filterDigitsOnly(it, 11); phoneError = null },
                 phoneError = phoneError,
-                selectedModality = selectedModality,
-                onModalityChange = { selectedModality = it; modalityError = null },
+                selectedModalities = selectedModalities,
+                onModalityToggle = { modality ->
+                    selectedModalities = if (modality in selectedModalities) {
+                        selectedModalities - modality
+                    } else {
+                        selectedModalities + modality
+                    }
+                    modalityError = null
+                },
                 modalityError = modalityError,
                 selectedAttendance = selectedAttendance,
                 onAttendanceChange = { selectedAttendance = it; attendanceError = null },
@@ -593,11 +737,8 @@ private fun AddSportClientDialog(
                 cashDigits = cashDigits,
                 onCashChange = { cashDigits = filterDigitsOnly(it, 10); cashError = null },
                 cashError = cashError,
-                lastPaymentMonth = lastPaymentMonthDigits,
-                onLastPaymentMonthChange = {
-                    lastPaymentMonthDigits = filterDigitsOnly(it, 6)
-                    lastPaymentMonthError = null
-                },
+                lastPaymentMonthDisplay = lastPaymentMonth,
+                onLastPaymentMonthClick = { showMonthPicker = true },
                 lastPaymentMonthError = lastPaymentMonthError,
             )
         },
@@ -607,11 +748,10 @@ private fun AddSportClientDialog(
                 val apelidoResult = SportClientValidator.validateApelido(apelido)
                 val cpfResult = SportClientValidator.validateCpf(cpfDigits)
                 val phoneResult = SportClientValidator.validatePhone(phoneDigits)
-                val modalityResult = SportClientValidator.validateModalidade(selectedModality)
+                val modalityResult = SportClientValidator.validateModalidade(selectedModalities.toList())
                 val attendanceResult = SportClientValidator.validateAttendance(selectedAttendance)
                 val paymentResult = SportClientValidator.validatePaymentMethod(selectedPayment)
-                val formattedMonth = formatMonthYearDigits(lastPaymentMonthDigits)
-                val lastMonthResult = SportClientValidator.validateLastPaymentMonth(formattedMonth)
+                val lastMonthResult = SportClientValidator.validateLastPaymentMonth(lastPaymentMonth)
 
                 nameError = nameResult.errorMessage
                 apelidoError = apelidoResult.errorMessage
@@ -643,11 +783,11 @@ private fun AddSportClientDialog(
                     apelido = apelido.trim(),
                     cpf = cpfDigits,
                     phone = phoneDigits,
-                    modality = selectedModality!!,
+                    modalities = selectedModalities.toList(),
                     attendance = selectedAttendance!!,
                     paymentMethod = selectedPayment!!,
                     cashAmountCents = cashAmountCents ?: 0L,
-                    lastPaymentMonth = formattedMonth,
+                    lastPaymentMonth = lastPaymentMonth,
                 )
                 onConfirm(client)
             }) {
@@ -677,13 +817,12 @@ private fun EditSportClientDialog(
     var apelido by remember(client.id) { mutableStateOf(client.apelido) }
     var cpfDigits by remember(client.id) { mutableStateOf(client.cpf) }
     var phoneDigits by remember(client.id) { mutableStateOf(client.phone) }
-    var selectedModality by remember(client.id) { mutableStateOf<SportModality?>(client.modality) }
+    var selectedModalities by remember(client.id) { mutableStateOf(client.modalities.toSet()) }
     var selectedAttendance by remember(client.id) { mutableStateOf<Int?>(client.attendance) }
     var selectedPayment by remember(client.id) { mutableStateOf<PaymentMethod?>(client.paymentMethod) }
     var cashDigits by remember(client.id) { mutableStateOf(centsToDigitString(client.cashAmountCents)) }
-    var lastPaymentMonthDigits by remember(client.id) {
-        mutableStateOf(client.lastPaymentMonth.filter { it.isDigit() })
-    }
+    var lastPaymentMonth by remember(client.id) { mutableStateOf(client.lastPaymentMonth) }
+    var showMonthPicker by remember { mutableStateOf(false) }
 
     var nameError by remember { mutableStateOf<String?>(null) }
     var apelidoError by remember { mutableStateOf<String?>(null) }
@@ -695,6 +834,22 @@ private fun EditSportClientDialog(
     var cashError by remember { mutableStateOf<String?>(null) }
     var lastPaymentMonthError by remember { mutableStateOf<String?>(null) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+    if (showMonthPicker) {
+        val (defaultYear, defaultMonth) = currentYearMonth()
+        val initMonth = lastPaymentMonth.substringBefore("/").toIntOrNull() ?: defaultMonth
+        val initYear = lastPaymentMonth.substringAfter("/").toIntOrNull() ?: defaultYear
+        MonthYearPickerDialog(
+            initialMonth = initMonth,
+            initialYear = initYear,
+            onDismiss = { showMonthPicker = false },
+            onConfirm = { month, year ->
+                lastPaymentMonth = "${month.toString().padStart(2, '0')}/${year.toString().padStart(4, '0')}"
+                lastPaymentMonthError = null
+                showMonthPicker = false
+            },
+        )
+    }
 
     if (showDeleteConfirmation) {
         AlertDialog(
@@ -752,8 +907,15 @@ private fun EditSportClientDialog(
                 phoneDigits = phoneDigits,
                 onPhoneChange = { phoneDigits = filterDigitsOnly(it, 11); phoneError = null },
                 phoneError = phoneError,
-                selectedModality = selectedModality,
-                onModalityChange = { selectedModality = it; modalityError = null },
+                selectedModalities = selectedModalities,
+                onModalityToggle = { modality ->
+                    selectedModalities = if (modality in selectedModalities) {
+                        selectedModalities - modality
+                    } else {
+                        selectedModalities + modality
+                    }
+                    modalityError = null
+                },
                 modalityError = modalityError,
                 selectedAttendance = selectedAttendance,
                 onAttendanceChange = { selectedAttendance = it; attendanceError = null },
@@ -764,11 +926,8 @@ private fun EditSportClientDialog(
                 cashDigits = cashDigits,
                 onCashChange = { cashDigits = filterDigitsOnly(it, 10); cashError = null },
                 cashError = cashError,
-                lastPaymentMonth = lastPaymentMonthDigits,
-                onLastPaymentMonthChange = {
-                    lastPaymentMonthDigits = filterDigitsOnly(it, 6)
-                    lastPaymentMonthError = null
-                },
+                lastPaymentMonthDisplay = lastPaymentMonth,
+                onLastPaymentMonthClick = { showMonthPicker = true },
                 lastPaymentMonthError = lastPaymentMonthError,
             )
         },
@@ -778,11 +937,10 @@ private fun EditSportClientDialog(
                 val apelidoResult = SportClientValidator.validateApelido(apelido)
                 val cpfResult = SportClientValidator.validateCpf(cpfDigits)
                 val phoneResult = SportClientValidator.validatePhone(phoneDigits)
-                val modalityResult = SportClientValidator.validateModalidade(selectedModality)
+                val modalityResult = SportClientValidator.validateModalidade(selectedModalities.toList())
                 val attendanceResult = SportClientValidator.validateAttendance(selectedAttendance)
                 val paymentResult = SportClientValidator.validatePaymentMethod(selectedPayment)
-                val formattedMonth = formatMonthYearDigits(lastPaymentMonthDigits)
-                val lastMonthResult = SportClientValidator.validateLastPaymentMonth(formattedMonth)
+                val lastMonthResult = SportClientValidator.validateLastPaymentMonth(lastPaymentMonth)
 
                 nameError = nameResult.errorMessage
                 apelidoError = apelidoResult.errorMessage
@@ -814,11 +972,11 @@ private fun EditSportClientDialog(
                         apelido = apelido.trim(),
                         cpf = cpfDigits,
                         phone = phoneDigits,
-                        modality = selectedModality!!,
+                        modalities = selectedModalities.toList(),
                         attendance = selectedAttendance!!,
                         paymentMethod = selectedPayment!!,
                         cashAmountCents = cashAmountCents ?: 0L,
-                        lastPaymentMonth = formattedMonth,
+                        lastPaymentMonth = lastPaymentMonth,
                     ),
                 )
             }) {

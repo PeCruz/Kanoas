@@ -37,10 +37,16 @@ import br.com.sprena.presentation.financial.FinancialScreen
 import br.com.sprena.presentation.financial.FinancialViewModel
 import br.com.sprena.presentation.financial.addtransaction.AddTransactionDialog
 import br.com.sprena.presentation.financial.addtransaction.AddTransactionViewModel
+import br.com.sprena.core.platform.rememberFilePicker
+import br.com.sprena.presentation.eventos.EventCategory
+import br.com.sprena.presentation.eventos.EventosIntent
+import br.com.sprena.presentation.eventos.EventosScreen
+import br.com.sprena.presentation.eventos.EventosViewModel
+import br.com.sprena.presentation.eventos.createevent.CreateEventScreen
+import br.com.sprena.presentation.eventos.createevent.CreateEventViewModel
 import br.com.sprena.presentation.kanban.KanbanIntent
 import br.com.sprena.presentation.kanban.KanbanScreen
 import br.com.sprena.presentation.kanban.KanbanViewModel
-import br.com.sprena.core.platform.rememberFilePicker
 import br.com.sprena.presentation.kanban.createtask.CreateTaskIntent
 import br.com.sprena.presentation.kanban.createtask.CreateTaskScreen
 import br.com.sprena.presentation.kanban.createtask.CreateTaskViewModel
@@ -57,27 +63,27 @@ import br.com.sprena.presentation.sportclient.SportClientViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
- * Rotas de navegação do app.
+ * Rotas de navegacao do app.
  */
 object Routes {
     const val LOGIN = "login"
     const val HOME = "home"
     const val CREATE_TASK = "create_task"
+    const val CREATE_EVENT = "create_event"
     const val SETTINGS = "settings"
     const val MENU = "menu"
     const val CATEGORY = "category"
 }
 
 /**
- * Grafo de navegação principal.
- * Login → Home (BottomNav: Home / Financeiro) → CreateTask | Settings.
+ * Grafo de navegacao principal.
+ * Login -> Home (BottomNav: Home / Eventos / Comandas / Financeiro / Config)
+ *       -> CreateTask | CreateEvent | Settings | Menu | Category.
  */
 @Composable
 fun NavGraph(themeViewModel: ThemeViewModel) {
     val navController = rememberNavController()
-    // MenuViewModel shared between Cardápio (Settings) and Comandas (Bar → Itens Consumidos)
     val menuViewModel: MenuViewModel = koinViewModel()
-    // CategoryViewModel shared between Settings (manage) and Financial (AddTransaction dropdown)
     val categoryViewModel: CategoryViewModel = koinViewModel()
 
     NavHost(
@@ -98,10 +104,16 @@ fun NavGraph(themeViewModel: ThemeViewModel) {
         }
 
         composable(route = Routes.HOME) { backStackEntry ->
-            // Observe task created result from CreateTask screen
             val savedStateHandle = backStackEntry.savedStateHandle
             val createdName = savedStateHandle.get<String>("created_task_name")
             val createdPriority = savedStateHandle.get<Int>("created_task_priority")
+
+            val createdEventId = savedStateHandle.get<String?>("created_event_id")
+            val createdEventName = savedStateHandle.get<String>("created_event_name")
+            val createdEventCategory = savedStateHandle.get<String>("created_event_category")
+            val createdEventDate = savedStateHandle.get<Long>("created_event_date")
+            val createdEventContact = savedStateHandle.get<String?>("created_event_contact")
+            val createdEventDescription = savedStateHandle.get<String?>("created_event_description")
 
             HomeWithBottomNav(
                 navController = navController,
@@ -113,6 +125,27 @@ fun NavGraph(themeViewModel: ThemeViewModel) {
                 onTaskConsumed = {
                     savedStateHandle.remove<String>("created_task_name")
                     savedStateHandle.remove<Int>("created_task_priority")
+                },
+                createdEventId = createdEventId,
+                createdEventName = createdEventName,
+                createdEventCategory = createdEventCategory,
+                createdEventDate = createdEventDate,
+                createdEventContact = createdEventContact,
+                createdEventDescription = createdEventDescription,
+                onEventConsumed = {
+                    savedStateHandle.remove<String?>("created_event_id")
+                    savedStateHandle.remove<String>("created_event_name")
+                    savedStateHandle.remove<String>("created_event_category")
+                    savedStateHandle.remove<Long>("created_event_date")
+                    savedStateHandle.remove<String?>("created_event_contact")
+                    savedStateHandle.remove<String?>("created_event_description")
+                    // Clear edit data keys
+                    savedStateHandle.remove<String>("edit_event_id")
+                    savedStateHandle.remove<String>("edit_event_name")
+                    savedStateHandle.remove<String>("edit_event_category")
+                    savedStateHandle.remove<Long>("edit_event_date")
+                    savedStateHandle.remove<String?>("edit_event_contact")
+                    savedStateHandle.remove<String?>("edit_event_description")
                 },
             )
         }
@@ -147,6 +180,66 @@ fun NavGraph(themeViewModel: ThemeViewModel) {
             )
         }
 
+        composable(route = Routes.CREATE_EVENT) {
+            val createEventViewModel: CreateEventViewModel = koinViewModel()
+
+            // Check if we're editing an existing event (data set by HOME before navigating)
+            val previousEntry = navController.previousBackStackEntry
+            val editEventId = previousEntry?.savedStateHandle?.get<String>("edit_event_id")
+            val editEventName = previousEntry?.savedStateHandle?.get<String>("edit_event_name")
+            val editEventCategory = previousEntry?.savedStateHandle?.get<String>("edit_event_category")
+            val editEventDate = previousEntry?.savedStateHandle?.get<Long>("edit_event_date")
+            val editEventContact = previousEntry?.savedStateHandle?.get<String?>("edit_event_contact")
+            val editEventDescription = previousEntry?.savedStateHandle?.get<String?>("edit_event_description")
+
+            LaunchedEffect(editEventId) {
+                if (editEventId != null && editEventName != null && editEventCategory != null && editEventDate != null) {
+                    createEventViewModel.handleIntent(
+                        br.com.sprena.presentation.eventos.createevent.CreateEventIntent.LoadForEdit(
+                            eventId = editEventId,
+                            name = editEventName,
+                            category = EventCategory.valueOf(editEventCategory),
+                            dateEpochDay = editEventDate,
+                            contact = editEventContact,
+                            description = editEventDescription,
+                        ),
+                    )
+                    // Clear edit keys so they don't persist on re-navigation
+                    previousEntry?.savedStateHandle?.remove<String>("edit_event_id")
+                    previousEntry?.savedStateHandle?.remove<String>("edit_event_name")
+                    previousEntry?.savedStateHandle?.remove<String>("edit_event_category")
+                    previousEntry?.savedStateHandle?.remove<Long>("edit_event_date")
+                    previousEntry?.savedStateHandle?.remove<String?>("edit_event_contact")
+                    previousEntry?.savedStateHandle?.remove<String?>("edit_event_description")
+                }
+            }
+
+            CreateEventScreen(
+                viewModel = createEventViewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onEventSaved = { eventId, name, category, dateEpochDay, contact, description ->
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("created_event_id", eventId)
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("created_event_name", name)
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("created_event_category", category.name)
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("created_event_date", dateEpochDay)
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("created_event_contact", contact)
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("created_event_description", description)
+                },
+            )
+        }
+
         composable(route = Routes.SETTINGS) {
             SettingsScreen(
                 themeViewModel = themeViewModel,
@@ -174,9 +267,6 @@ fun NavGraph(themeViewModel: ThemeViewModel) {
     }
 }
 
-/**
- * Tela principal pós-login com BottomNav (Home / Financeiro / Bar).
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeWithBottomNav(
@@ -187,17 +277,21 @@ private fun HomeWithBottomNav(
     createdTaskName: String? = null,
     createdTaskPriority: Int? = null,
     onTaskConsumed: () -> Unit = {},
+    createdEventId: String? = null,
+    createdEventName: String? = null,
+    createdEventCategory: String? = null,
+    createdEventDate: Long? = null,
+    createdEventContact: String? = null,
+    createdEventDescription: String? = null,
+    onEventConsumed: () -> Unit = {},
 ) {
     val bottomNavViewModel: BottomNavViewModel = koinViewModel()
     val bottomNavState by bottomNavViewModel.state.collectAsState()
 
-    // Sport Clients (Home)
     val sportClientViewModel: SportClientViewModel = koinViewModel()
-
-    // Kanban (Quadro)
     val kanbanViewModel: KanbanViewModel = koinViewModel()
+    val eventosViewModel: EventosViewModel = koinViewModel()
 
-    // Consume created task from CreateTaskScreen
     LaunchedEffect(createdTaskName, createdTaskPriority) {
         if (createdTaskName != null && createdTaskPriority != null) {
             kanbanViewModel.handleIntent(
@@ -207,18 +301,44 @@ private fun HomeWithBottomNav(
         }
     }
 
-    // Financial
+    LaunchedEffect(createdEventName, createdEventCategory, createdEventDate) {
+        if (createdEventName != null && createdEventCategory != null && createdEventDate != null) {
+            val category = EventCategory.valueOf(createdEventCategory)
+            if (createdEventId != null) {
+                // Edit mode — update existing event
+                eventosViewModel.handleIntent(
+                    EventosIntent.EventUpdated(
+                        eventId = createdEventId,
+                        name = createdEventName,
+                        category = category,
+                        dateEpochDay = createdEventDate,
+                        contact = createdEventContact,
+                        description = createdEventDescription,
+                    ),
+                )
+            } else {
+                // Create mode — new event
+                eventosViewModel.handleIntent(
+                    EventosIntent.EventCreated(
+                        name = createdEventName,
+                        category = category,
+                        dateEpochDay = createdEventDate,
+                        contact = createdEventContact,
+                        description = createdEventDescription,
+                    ),
+                )
+            }
+            onEventConsumed()
+        }
+    }
+
     val financialViewModel: FinancialViewModel = koinViewModel()
     val financialState by financialViewModel.state.collectAsState()
 
-    // Bar
     val barViewModel: BarViewModel = koinViewModel()
     val barState by barViewModel.state.collectAsState()
 
-    // Menu items (shared with Cardápio)
     val menuState by menuViewModel.state.collectAsState()
-
-    // Categories (shared with Financial)
     val categoryState by categoryViewModel.state.collectAsState()
 
     Scaffold(
@@ -240,19 +360,19 @@ private fun HomeWithBottomNav(
                     label = { Text("Home") },
                 )
                 NavigationBarItem(
-                    selected = bottomNavState.current == BottomTab.QUADRO,
+                    selected = bottomNavState.current == BottomTab.EVENTOS,
                     onClick = {
                         bottomNavViewModel.handleIntent(
-                            BottomNavIntent.TabSelected(BottomTab.QUADRO),
+                            BottomNavIntent.TabSelected(BottomTab.EVENTOS),
                         )
                     },
                     icon = {
                         Text(
-                            text = "\uD83D\uDCCB",
+                            text = "📅",
                             style = MaterialTheme.typography.labelLarge,
                         )
                     },
-                    label = { Text("Quadro") },
+                    label = { Text("Eventos") },
                 )
                 NavigationBarItem(
                     selected = bottomNavState.current == BottomTab.BAR,
@@ -263,7 +383,7 @@ private fun HomeWithBottomNav(
                     },
                     icon = {
                         Text(
-                            text = "\uD83C\uDF7A",
+                            text = "🍺",
                             style = MaterialTheme.typography.labelLarge,
                         )
                     },
@@ -294,7 +414,7 @@ private fun HomeWithBottomNav(
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Configurações",
+                            contentDescription = "Configuracoes",
                         )
                     },
                     label = { Text("Config") },
@@ -311,13 +431,34 @@ private fun HomeWithBottomNav(
                 )
             }
 
-            BottomTab.QUADRO -> {
-                KanbanScreen(
-                    viewModel = kanbanViewModel,
+            BottomTab.EVENTOS -> {
+                EventosScreen(
+                    viewModel = eventosViewModel,
                     themeViewModel = themeViewModel,
                     modifier = Modifier.padding(bottomNavPadding),
-                    onNavigateCreateTask = {
-                        navController.navigate(Routes.CREATE_TASK)
+                    onNavigateCreateEvent = {
+                        navController.navigate(Routes.CREATE_EVENT)
+                    },
+                    onNavigateEditEvent = { event ->
+                        navController.currentBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("edit_event_id", event.id)
+                        navController.currentBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("edit_event_name", event.name)
+                        navController.currentBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("edit_event_category", (event.originalCategory ?: event.category).name)
+                        navController.currentBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("edit_event_date", event.dateEpochDay)
+                        navController.currentBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("edit_event_contact", event.contact)
+                        navController.currentBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("edit_event_description", event.description)
+                        navController.navigate(Routes.CREATE_EVENT)
                     },
                 )
             }
@@ -353,9 +494,6 @@ private fun HomeWithBottomNav(
         }
     }
 
-    // --- Dialogs ---
-
-    // AddTransaction Dialog — fresh VM each time (no Koin cache)
     if (financialState.isAddDialogVisible) {
         val addTransactionViewModel = remember { AddTransactionViewModel() }
         AddTransactionDialog(
@@ -374,7 +512,6 @@ private fun HomeWithBottomNav(
         )
     }
 
-    // EditTransaction Dialog — fresh VM pre-filled with existing data
     if (financialState.isEditDialogVisible && financialState.editingTransactionId != null) {
         val editingTx = financialState.transactions.find {
             it.id == financialState.editingTransactionId
@@ -397,7 +534,7 @@ private fun HomeWithBottomNav(
                         br.com.sprena.presentation.financial.FinancialIntent.DismissEditDialog,
                     )
                 },
-                onTransactionCreated = { /* not used in edit mode */ },
+                onTransactionCreated = { },
                 onTransactionUpdated = { transaction ->
                     financialViewModel.handleIntent(
                         br.com.sprena.presentation.financial.FinancialIntent.TransactionUpdated(transaction),
@@ -412,7 +549,6 @@ private fun HomeWithBottomNav(
         }
     }
 
-    // AddClient Dialog — cria VM novo cada vez que o diálogo abre (sem cache)
     if (barState.isAddClientDialogVisible) {
         val addClientViewModel = remember { AddClientViewModel() }
         AddClientDialog(
@@ -427,7 +563,6 @@ private fun HomeWithBottomNav(
         )
     }
 
-    // ClientDetail BottomSheet
     if (barState.selectedClient != null) {
         val selectedClient = barState.selectedClient!!
         val clientDetailSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
