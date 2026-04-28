@@ -50,7 +50,7 @@ class SportClientViewModelTest {
         apelido = "Pedrinho",
         cpf = "12345678901",
         phone = "11999998888",
-        modality = SportModality.FUTEVOLEI,
+        modalities = listOf(SportModality.FUTEVOLEI),
         attendance = 3,
         paymentMethod = PaymentMethod.CASH,
         cashAmountCents = 5000L,
@@ -63,7 +63,7 @@ class SportClientViewModelTest {
         apelido = "",
         cpf = "98765432101",
         phone = "11988887777",
-        modality = SportModality.BEACH_TENNIS,
+        modalities = listOf(SportModality.BEACH_TENNIS),
         attendance = 2,
         paymentMethod = PaymentMethod.WELLHUB,
         cashAmountCents = 1500L,
@@ -169,28 +169,42 @@ class SportClientViewModelTest {
     }
 
     @Test
-    fun `client preserves modality FUTEVOLEI`() = runTest {
+    fun `client preserves modalities FUTEVOLEI`() = runTest {
         val vm = createVm()
         vm.handleIntent(SportClientIntent.ClientAdded(sampleClient))
-        assertEquals(SportModality.FUTEVOLEI, vm.state.first().clients.first().modality)
+        assertEquals(listOf(SportModality.FUTEVOLEI), vm.state.first().clients.first().modalities)
     }
 
     @Test
-    fun `client preserves modality BEACH_TENNIS`() = runTest {
+    fun `client preserves modalities BEACH_TENNIS`() = runTest {
         val vm = createVm()
         vm.handleIntent(SportClientIntent.ClientAdded(sampleClient2))
-        assertEquals(SportModality.BEACH_TENNIS, vm.state.first().clients.first().modality)
+        assertEquals(listOf(SportModality.BEACH_TENNIS), vm.state.first().clients.first().modalities)
     }
 
     @Test
-    fun `client preserves modality VOLEI`() = runTest {
+    fun `client preserves modalities VOLEI`() = runTest {
         val voleiClient = sampleClient.copy(
             id = "sport_3",
-            modality = SportModality.VOLEI,
+            modalities = listOf(SportModality.VOLEI),
         )
         val vm = createVm()
         vm.handleIntent(SportClientIntent.ClientAdded(voleiClient))
-        assertEquals(SportModality.VOLEI, vm.state.first().clients.first().modality)
+        assertEquals(listOf(SportModality.VOLEI), vm.state.first().clients.first().modalities)
+    }
+
+    @Test
+    fun `client preserves multiple modalities`() = runTest {
+        val multiClient = sampleClient.copy(
+            id = "sport_4",
+            modalities = listOf(SportModality.FUTEVOLEI, SportModality.BEACH_TENNIS),
+        )
+        val vm = createVm()
+        vm.handleIntent(SportClientIntent.ClientAdded(multiClient))
+        assertEquals(
+            listOf(SportModality.FUTEVOLEI, SportModality.BEACH_TENNIS),
+            vm.state.first().clients.first().modalities,
+        )
     }
 
     @Test
@@ -215,12 +229,15 @@ class SportClientViewModelTest {
     }
 
     @Test
-    fun `ClientUpdated can change modality`() = runTest {
+    fun `ClientUpdated can change modalities`() = runTest {
         val vm = createVm()
         vm.handleIntent(SportClientIntent.ClientAdded(sampleClient))
-        val updated = sampleClient.copy(modality = SportModality.VOLEI)
+        val updated = sampleClient.copy(modalities = listOf(SportModality.VOLEI, SportModality.BEACH_TENNIS))
         vm.handleIntent(SportClientIntent.ClientUpdated(updated))
-        assertEquals(SportModality.VOLEI, vm.state.first().clients.first().modality)
+        assertEquals(
+            listOf(SportModality.VOLEI, SportModality.BEACH_TENNIS),
+            vm.state.first().clients.first().modalities,
+        )
     }
 
     @Test

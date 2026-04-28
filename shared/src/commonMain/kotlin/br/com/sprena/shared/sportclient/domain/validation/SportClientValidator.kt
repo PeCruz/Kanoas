@@ -64,8 +64,8 @@ object SportClientValidator {
         }
     }
 
-    fun validateModalidade(modality: SportModality?): ValidationResult = when (modality) {
-        null -> ValidationResult.invalid("Modalidade é obrigatória")
+    fun validateModalidade(modalities: List<SportModality>?): ValidationResult = when {
+        modalities.isNullOrEmpty() -> ValidationResult.invalid("Selecione ao menos uma modalidade")
         else -> ValidationResult.Valid
     }
 
