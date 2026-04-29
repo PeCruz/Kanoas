@@ -31,11 +31,13 @@ class BarViewModel :
 
             is BarIntent.SearchQueryChanged -> {
                 val query = intent.query
-                val filtered = applyFilter(_state.value.clients, query)
-                _state.value = _state.value.copy(
-                    searchQuery = query,
-                    filteredClients = filtered,
-                )
+                _state.value = _state.value.copy(searchQuery = query)
+                recomputeFiltered()
+            }
+
+            is BarIntent.PaymentFilterChanged -> {
+                _state.value = _state.value.copy(paymentFilter = intent.filter)
+                recomputeFiltered()
             }
 
             is BarIntent.AddClientClicked -> {
@@ -56,56 +58,61 @@ class BarViewModel :
 
             is BarIntent.ClientAdded -> {
                 val updated = _state.value.clients + intent.client
-                _state.value = _state.value.copy(
-                    clients = updated,
-                    filteredClients = applyFilter(updated, _state.value.searchQuery),
-                )
+                _state.value = _state.value.copy(clients = updated)
+                recomputeFiltered()
             }
 
             is BarIntent.ClientUpdated -> {
                 val updated = _state.value.clients.map { c ->
                     if (c.id == intent.client.id) intent.client else c
                 }
-                _state.value = _state.value.copy(
-                    clients = updated,
-                    filteredClients = applyFilter(updated, _state.value.searchQuery),
-                    // NÃO atualizar selectedClient aqui — o ClientDetailViewModel
-                    // gerencia seu próprio state internamente. Atualizar selectedClient
-                    // causaria recomposição que recria o VM e perde o estado.
-                )
+                _state.value = _state.value.copy(clients = updated)
+                recomputeFiltered()
             }
 
             is BarIntent.TogglePaid -> {
                 val updated = _state.value.clients.map { c ->
                     if (c.id == intent.clientId) c.copy(isPaid = !c.isPaid) else c
                 }
-                _state.value = _state.value.copy(
-                    clients = updated,
-                    filteredClients = applyFilter(updated, _state.value.searchQuery),
-                )
+                _state.value = _state.value.copy(clients = updated)
+                recomputeFiltered()
             }
 
             is BarIntent.ClientDeleted -> {
                 val updated = _state.value.clients.filter { it.id != intent.clientId }
                 _state.value = _state.value.copy(
                     clients = updated,
-                    filteredClients = applyFilter(updated, _state.value.searchQuery),
                     selectedClient = if (_state.value.selectedClient?.id == intent.clientId) {
                         null
                     } else {
                         _state.value.selectedClient
                     },
                 )
+                recomputeFiltered()
             }
         }
     }
 
-    private fun applyFilter(clients: List<BarClient>, query: String): List<BarClient> {
-        if (query.isBlank()) return clients
-        val lowerQuery = query.lowercase()
-        return clients.filter { client ->
-            client.name.lowercase().contains(lowerQuery) ||
-                (client.nickname?.lowercase()?.contains(lowerQuery) == true)
+    private fun recomputeFiltered() {
+        val s = _state.value
+        var result = s.clients
+
+        // Payment filter
+        result = when (s.paymentFilter) {
+            PaymentFilter.ALL -> result
+            PaymentFilter.PAID -> result.filter { it.isPaid || it.items.sumOf { i -> i.priceCents * i.quantity } == 0L }
+            PaymentFilter.UNPAID -> result.filter { !it.isPaid && it.items.sumOf { i -> i.priceCents * i.quantity } > 0L }
         }
+
+        // Search filter
+        if (s.searchQuery.isNotBlank()) {
+            val lowerQuery = s.searchQuery.lowercase()
+            result = result.filter { client ->
+                client.name.lowercase().contains(lowerQuery) ||
+                    (client.nickname?.lowercase()?.contains(lowerQuery) == true)
+            }
+        }
+
+        _state.value = s.copy(filteredClients = result)
     }
 }

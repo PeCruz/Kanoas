@@ -44,10 +44,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import br.com.sprena.presentation.financial.FinancialTransactionSummary
 import br.com.sprena.presentation.financial.TransactionType
+import br.com.sprena.presentation.financial.currentYearMonth
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
 
 /**
  * Visual transformation that formats raw digit input as BRL currency.
@@ -358,36 +368,78 @@ fun AddTransactionDialog(
                     )
                 }
 
-                // --- Date Picker Dialog ---
+                // --- Date Picker Dialog (switches based on granularity) ---
                 if (showDatePicker) {
-                    DatePickerDialog(
-                        onDismissRequest = { showDatePicker = false },
-                        confirmButton = {
-                            // Handled inside picker composable below
-                        },
-                    ) {
-                        val datePickerState = rememberDatePickerState()
-                        DatePicker(state = datePickerState)
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                            horizontalArrangement = Arrangement.End,
-                        ) {
-                            TextButton(onClick = { showDatePicker = false }) {
-                                Text("Cancelar")
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Button(
-                                onClick = {
-                                    datePickerState.selectedDateMillis?.let { millis ->
-                                        viewModel.handleIntent(
-                                            AddTransactionIntent.DatePickerConfirmed(millis),
-                                        )
+                    when (state.dateGranularity) {
+                        DateGranularity.DAY -> {
+                            DatePickerDialog(
+                                onDismissRequest = { showDatePicker = false },
+                                confirmButton = {},
+                            ) {
+                                val datePickerState = rememberDatePickerState()
+                                DatePicker(state = datePickerState)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                                    horizontalArrangement = Arrangement.End,
+                                ) {
+                                    TextButton(onClick = { showDatePicker = false }) {
+                                        Text("Cancelar")
                                     }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Button(
+                                        onClick = {
+                                            datePickerState.selectedDateMillis?.let { millis ->
+                                                viewModel.handleIntent(
+                                                    AddTransactionIntent.DatePickerConfirmed(millis),
+                                                )
+                                            }
+                                            showDatePicker = false
+                                        },
+                                    ) {
+                                        Text("OK")
+                                    }
+                                }
+                            }
+                        }
+
+                        DateGranularity.MONTH -> {
+                            val (defaultYear, defaultMonth) = currentYearMonth()
+                            val initMonth = state.selectedMonth ?: defaultMonth
+                            val initYear = state.selectedYear ?: defaultYear
+                            MonthPickerDialog(
+                                initialMonth = initMonth,
+                                initialYear = initYear,
+                                onDismiss = { showDatePicker = false },
+                                onConfirm = { month, year ->
+                                    viewModel.handleIntent(
+                                        AddTransactionIntent.DateSelected(
+                                            day = null,
+                                            month = month,
+                                            year = year,
+                                        ),
+                                    )
                                     showDatePicker = false
                                 },
-                            ) {
-                                Text("OK")
-                            }
+                            )
+                        }
+
+                        DateGranularity.YEAR -> {
+                            val (defaultYear, _) = currentYearMonth()
+                            val initYear = state.selectedYear ?: defaultYear
+                            YearPickerDialog(
+                                initialYear = initYear,
+                                onDismiss = { showDatePicker = false },
+                                onConfirm = { year ->
+                                    viewModel.handleIntent(
+                                        AddTransactionIntent.DateSelected(
+                                            day = null,
+                                            month = null,
+                                            year = year,
+                                        ),
+                                    )
+                                    showDatePicker = false
+                                },
+                            )
                         }
                     }
                 }
@@ -445,4 +497,138 @@ fun AddTransactionDialog(
             }
         }
     }
+}
+
+// =========================================================================
+// Month Picker Dialog (for MONTH granularity)
+// =========================================================================
+
+private val MONTH_NAMES_PT = listOf(
+    "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+    "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+)
+
+@Composable
+private fun MonthPickerDialog(
+    initialMonth: Int,
+    initialYear: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (month: Int, year: Int) -> Unit,
+) {
+    var selectedMonth by remember { mutableIntStateOf(initialMonth) }
+    var selectedYear by remember { mutableIntStateOf(initialYear) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Selecionar Mês/Ano") },
+        text = {
+            Column {
+                // Year navigation
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = { selectedYear-- }) {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Ano anterior")
+                    }
+                    Text(
+                        text = "$selectedYear",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                    IconButton(onClick = { selectedYear++ }) {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Próximo ano")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Month grid (3 columns x 4 rows)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (row in 0..3) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            for (col in 0..2) {
+                                val monthIndex = row * 3 + col
+                                val monthNumber = monthIndex + 1
+                                FilterChip(
+                                    selected = selectedMonth == monthNumber,
+                                    onClick = { selectedMonth = monthNumber },
+                                    label = {
+                                        Text(
+                                            text = MONTH_NAMES_PT[monthIndex],
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textAlign = TextAlign.Center,
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selectedMonth, selectedYear) }) {
+                Text("Confirmar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        },
+    )
+}
+
+// =========================================================================
+// Year Picker Dialog (for YEAR granularity)
+// =========================================================================
+
+@Composable
+private fun YearPickerDialog(
+    initialYear: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (year: Int) -> Unit,
+) {
+    var selectedYear by remember { mutableIntStateOf(initialYear) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Selecionar Ano") },
+        text = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = { selectedYear-- }) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Ano anterior")
+                }
+                Text(
+                    text = "$selectedYear",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
+                IconButton(onClick = { selectedYear++ }) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Próximo ano")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selectedYear) }) {
+                Text("Confirmar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        },
+    )
 }

@@ -9,6 +9,7 @@ sealed interface BarIntent : UiIntent {
     data object DismissAddClientDialog : BarIntent
     data class ClientClicked(val client: BarClient) : BarIntent
     data object DismissClientDetail : BarIntent
+    data class PaymentFilterChanged(val filter: PaymentFilter) : BarIntent
     data class ClientAdded(val client: BarClient) : BarIntent
     data class ClientUpdated(val client: BarClient) : BarIntent
     data class TogglePaid(val clientId: String) : BarIntent

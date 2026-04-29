@@ -266,4 +266,68 @@ class BarViewModelTest {
         vm.handleIntent(BarIntent.DismissClientDetail)
         assertNull(vm.state.first().selectedClient)
     }
+
+    // =========================================================================
+    // Payment Filter (Pagos / Não Pagos)
+    // =========================================================================
+
+    @Test
+    fun `initial payment filter is ALL`() = runTest {
+        val vm = createVm()
+        assertEquals(PaymentFilter.ALL, vm.state.first().paymentFilter)
+    }
+
+    @Test
+    fun `PaymentFilterChanged to PAID shows only paid clients`() = runTest {
+        val vm = createVm()
+        vm.handleIntent(BarIntent.ClientAdded(sampleClient))  // isPaid = false, has items
+        vm.handleIntent(BarIntent.ClientAdded(sampleClient2)) // isPaid = true, no items
+        vm.handleIntent(BarIntent.PaymentFilterChanged(PaymentFilter.PAID))
+        val s = vm.state.first()
+        assertEquals(PaymentFilter.PAID, s.paymentFilter)
+        assertEquals(1, s.filteredClients.size)
+        assertEquals("client_2", s.filteredClients.first().id)
+    }
+
+    @Test
+    fun `PaymentFilterChanged to UNPAID shows only unpaid clients with balance`() = runTest {
+        val vm = createVm()
+        vm.handleIntent(BarIntent.ClientAdded(sampleClient))  // isPaid = false, has items
+        vm.handleIntent(BarIntent.ClientAdded(sampleClient2)) // isPaid = true, no items
+        vm.handleIntent(BarIntent.PaymentFilterChanged(PaymentFilter.UNPAID))
+        val s = vm.state.first()
+        assertEquals(1, s.filteredClients.size)
+        assertEquals("client_1", s.filteredClients.first().id)
+    }
+
+    @Test
+    fun `PaymentFilterChanged back to ALL shows all clients`() = runTest {
+        val vm = createVm()
+        vm.handleIntent(BarIntent.ClientAdded(sampleClient))
+        vm.handleIntent(BarIntent.ClientAdded(sampleClient2))
+        vm.handleIntent(BarIntent.PaymentFilterChanged(PaymentFilter.PAID))
+        vm.handleIntent(BarIntent.PaymentFilterChanged(PaymentFilter.ALL))
+        assertEquals(2, vm.state.first().filteredClients.size)
+    }
+
+    @Test
+    fun `payment filter combines with search query`() = runTest {
+        val unpaidClient2 = BarClient(
+            id = "client_3",
+            name = "João Unpaid",
+            phone = "11977776666",
+            cpf = "11111111111",
+            items = listOf(BarItem(id = "i1", name = "Item", priceCents = 500)),
+            isPaid = false,
+        )
+        val vm = createVm()
+        vm.handleIntent(BarIntent.ClientAdded(sampleClient))   // João, unpaid
+        vm.handleIntent(BarIntent.ClientAdded(sampleClient2))  // Maria, paid
+        vm.handleIntent(BarIntent.ClientAdded(unpaidClient2))   // João Unpaid, unpaid
+        vm.handleIntent(BarIntent.PaymentFilterChanged(PaymentFilter.UNPAID))
+        vm.handleIntent(BarIntent.SearchQueryChanged("João"))
+        val s = vm.state.first()
+        // Both Joãos are unpaid with balance, both match search
+        assertEquals(2, s.filteredClients.size)
+    }
 }

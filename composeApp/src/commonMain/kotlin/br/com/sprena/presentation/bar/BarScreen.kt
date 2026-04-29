@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -105,6 +106,24 @@ fun BarScreen(
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Adicionar cliente",
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // --- Payment Filter Chips ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                PaymentFilter.entries.forEach { filter ->
+                    FilterChip(
+                        selected = state.paymentFilter == filter,
+                        onClick = {
+                            viewModel.handleIntent(BarIntent.PaymentFilterChanged(filter))
+                        },
+                        label = { Text(filter.label) },
                     )
                 }
             }

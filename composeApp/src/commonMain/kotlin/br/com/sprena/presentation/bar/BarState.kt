@@ -3,6 +3,15 @@ package br.com.sprena.presentation.bar
 import br.com.sprena.shared.core.mvi.UiState
 
 /**
+ * Filtro rápido de pagamento para Comandas.
+ */
+enum class PaymentFilter(val label: String) {
+    ALL("Todos"),
+    PAID("Pagos"),
+    UNPAID("Não Pagos"),
+}
+
+/**
  * Representa um cliente na tabela do Bar.
  */
 data class BarClient(
@@ -32,6 +41,7 @@ data class BarItem(
 data class BarState(
     val clients: List<BarClient> = emptyList(),
     val searchQuery: String = "",
+    val paymentFilter: PaymentFilter = PaymentFilter.ALL,
     val filteredClients: List<BarClient> = emptyList(),
     val isLoading: Boolean = false,
     val isAddClientDialogVisible: Boolean = false,
